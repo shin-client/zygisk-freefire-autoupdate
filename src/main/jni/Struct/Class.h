@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Bools.h"
+#include "Logger.h" // Include logging system
 #include "../Dobby/dobby.h"
 
 class Vvector3
@@ -303,6 +304,55 @@ char get_Chars(monoString *str, int index)
   return _get_Chars(str, index);
 }
 
+// Better UTF-8 support function
+wchar_t get_Chars_Wide(monoString *str, int index)
+{
+  wchar_t (*_get_Chars)(monoString *str, int index) = (wchar_t (*)(monoString *, int))(CharGet);
+  return _get_Chars(str, index);
+}
+
+// Safe UTF-8 string extraction
+std::string get_UTF8_String(monoString *str)
+{
+  if (str == nullptr)
+    return "";
+
+  int len = str->getLength();
+  if (len <= 0 || len > 1000)
+    return ""; // Safety check
+
+  std::wstring wstr;
+  for (int i = 0; i < len; i++)
+  {
+    wchar_t wch = get_Chars_Wide(str, i);
+    if (wch != 0)
+      wstr += wch;
+  }
+
+  // Convert wide string to UTF-8
+  std::string utf8_str;
+  for (wchar_t wch : wstr)
+  {
+    if (wch < 0x80) // ASCII
+    {
+      utf8_str += (char)wch;
+    }
+    else if (wch < 0x800) // 2-byte UTF-8
+    {
+      utf8_str += (char)(0xC0 | (wch >> 6));
+      utf8_str += (char)(0x80 | (wch & 0x3F));
+    }
+    else // 3-byte UTF-8 (covers most cases)
+    {
+      utf8_str += (char)(0xE0 | (wch >> 12));
+      utf8_str += (char)(0x80 | ((wch >> 6) & 0x3F));
+      utf8_str += (char)(0x80 | (wch & 0x3F));
+    }
+  }
+
+  return utf8_str;
+}
+
 static bool get_IsSighting(void *player)
 {
   bool (*_get_IsSighting)(void *players) = (bool (*)(void *))(Scope);
@@ -354,26 +404,48 @@ float get_density()
 // Anti-Report Setup Function
 void SetupAntiReport()
 {
+  LOGI("Setting up Anti-Report system...");
+
   // Hook CreateReportPlayer
   if (Report1)
   {
+    LOGD("Hooking CreateReportPlayer at: %p", (void *)Report1);
     orig_CreateReportPlayer = (void *(*)(void *, void *, int))Report1;
-    DobbyHook((void*)Report1, (void*)hook_CreateReportPlayer, (void**)&orig_CreateReportPlayer);
+    DobbyHook((void *)Report1, (void *)hook_CreateReportPlayer, (void **)&orig_CreateReportPlayer);
+    LOGI("CreateReportPlayer hook installed successfully");
+  }
+  else
+  {
+    LOGE("Failed to find CreateReportPlayer address");
   }
 
   // Hook SetReportData
   if (Report2)
   {
+    LOGD("Hooking SetReportData at: %p", (void *)Report2);
     orig_SetReportData = (void *(*)(void *, void *, void *, void *, void *))Report2;
-    DobbyHook((void*)Report2, (void*)hook_SetReportData, (void**)&orig_SetReportData);
+    DobbyHook((void *)Report2, (void *)hook_SetReportData, (void **)&orig_SetReportData);
+    LOGI("SetReportData hook installed successfully");
+  }
+  else
+  {
+    LOGE("Failed to find SetReportData address");
   }
 
   // Hook CreateAddToBlackList
   if (Report4)
   {
+    LOGD("Hooking CreateAddToBlackList at: %p", (void *)Report4);
     orig_CreateAddToBlackList = (void *(*)(void *, void *, int))Report4;
-    DobbyHook((void*)Report4, (void*)hook_CreateAddToBlackList, (void**)&orig_CreateAddToBlackList);
+    DobbyHook((void *)Report4, (void *)hook_CreateAddToBlackList, (void **)&orig_CreateAddToBlackList);
+    LOGI("CreateAddToBlackList hook installed successfully");
   }
+  else
+  {
+    LOGE("Failed to find CreateAddToBlackList address");
+  }
+
+  LOGI("Anti-Report system setup completed");
 }
 
 // Auto Update Offset . No need to change anything

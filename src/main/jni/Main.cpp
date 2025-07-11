@@ -2,6 +2,12 @@
 #include <unistd.h>
 #include <thread>
 #include <limits>
+#include <vector>
+#include <string>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
+#include <fstream>
 
 #include <xdl.h>
 #include <KittyUtils.h>
@@ -11,6 +17,7 @@
 #include <CydiaSubstrate.h>
 #include "Struct/Gui.hpp"
 #include <Struct/main.h>
+#include "Struct/Logger.h" // Include our logging system
 #include "fonts/FontAwesome6_solid.h"
 #include "ImGui/Toggle.h"
 #include "zygisk.hpp"
@@ -21,6 +28,179 @@ using zygisk::ServerSpecializeArgs;
 
 // Global variables for screen dimensions
 int g_GlWidth, g_GlHeight;
+
+// Global log storage - moved from header
+std::vector<LogEntry> g_LogBuffer;
+bool g_AutoScroll = true;
+bool g_LogsVisible = true;
+bool g_AutoSaveToFile = true;
+std::string g_LogFilePath = "/sdcard/zygisk_ff_logs.txt";
+const int MAX_LOG_ENTRIES = 1000;
+
+// Function to get current timestamp
+std::string GetCurrentTimestamp()
+{
+  auto now = std::chrono::system_clock::now();
+  auto time_t = std::chrono::system_clock::to_time_t(now);
+  auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+
+  std::stringstream ss;
+  ss << std::put_time(std::localtime(&time_t), "%Y-%m-%d %H:%M:%S");
+  ss << '.' << std::setfill('0') << std::setw(3) << ms.count();
+  return ss.str();
+}
+
+// Initialize log file
+void InitLogFile()
+{
+  if (!g_AutoSaveToFile)
+    return;
+
+  std::ofstream logFile(g_LogFilePath, std::ios::out | std::ios::trunc);
+  if (logFile.is_open())
+  {
+    logFile << "=== ZYGISK FF LOG SESSION START ===" << std::endl;
+    logFile << "Session started at: " << GetCurrentTimestamp() << std::endl;
+    logFile << "=====================================" << std::endl;
+    logFile.close();
+  }
+}
+
+// Write single log entry to file
+void WriteLogToFile(const std::string &timestamp, const std::string &level, const std::string &message)
+{
+  if (!g_AutoSaveToFile)
+    return;
+
+  std::ofstream logFile(g_LogFilePath, std::ios::out | std::ios::app);
+  if (logFile.is_open())
+  {
+    logFile << "[" << timestamp << "] [" << level << "] " << message << std::endl;
+    logFile.close();
+  }
+}
+
+// Save all current logs to file
+void SaveLogsToFile()
+{
+  std::ofstream logFile(g_LogFilePath, std::ios::out | std::ios::trunc);
+  if (logFile.is_open())
+  {
+    logFile << "=== ZYGISK FF COMPLETE LOG DUMP ===" << std::endl;
+    logFile << "Generated at: " << GetCurrentTimestamp() << std::endl;
+    logFile << "Total entries: " << g_LogBuffer.size() << std::endl;
+    logFile << "====================================" << std::endl;
+
+    for (const auto &entry : g_LogBuffer)
+    {
+      logFile << "[" << entry.timestamp << "] [" << entry.level << "] " << entry.message << std::endl;
+    }
+
+    logFile << "=== END OF LOG DUMP ===" << std::endl;
+    logFile.close();
+  }
+}
+
+// Function to add log entry
+void AddLog(const char *level, const char *fmt, ...)
+{
+  char buffer[1024];
+  va_list args;
+  va_start(args, fmt);
+  vsnprintf(buffer, sizeof(buffer), fmt, args);
+  va_end(args);
+
+  LogEntry entry;
+  entry.timestamp = GetCurrentTimestamp();
+  entry.level = level;
+  entry.message = buffer;
+
+  // Set color based on log level
+  if (strcmp(level, "ERROR") == 0)
+  {
+    entry.color = ImVec4(1.0f, 0.4f, 0.4f, 1.0f); // Red
+  }
+  else if (strcmp(level, "WARN") == 0)
+  {
+    entry.color = ImVec4(1.0f, 1.0f, 0.4f, 1.0f); // Yellow
+  }
+  else if (strcmp(level, "INFO") == 0)
+  {
+    entry.color = ImVec4(0.4f, 1.0f, 0.4f, 1.0f); // Green
+  }
+  else
+  {
+    entry.color = ImVec4(0.8f, 0.8f, 0.8f, 1.0f); // Gray
+  }
+
+  g_LogBuffer.push_back(entry);
+
+  // Write to file immediately if auto-save is enabled
+  WriteLogToFile(entry.timestamp, entry.level, entry.message);
+
+  // Keep buffer size under limit
+  if (g_LogBuffer.size() > MAX_LOG_ENTRIES)
+  {
+    g_LogBuffer.erase(g_LogBuffer.begin());
+  }
+}
+
+// Function to render logs window
+void RenderLogsWindow()
+{
+  if (!g_LogsVisible)
+    return;
+
+  ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
+  if (ImGui::Begin("Debug Logs", &g_LogsVisible))
+  {
+    // Controls
+    if (ImGui::Button("Clear"))
+    {
+      g_LogBuffer.clear();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Save to File"))
+    {
+      SaveLogsToFile();
+    }
+    ImGui::SameLine();
+    ImGui::Checkbox("Auto-scroll", &g_AutoScroll);
+    ImGui::SameLine();
+    ImGui::Checkbox("Auto-save", &g_AutoSaveToFile);
+    ImGui::SameLine();
+    ImGui::Text("(%d entries)", (int)g_LogBuffer.size());
+
+    ImGui::Separator();
+
+    // File path display
+    ImGui::Text("Log file: %s", g_LogFilePath.c_str());
+    if (ImGui::Button("Open Log Directory"))
+    {
+      // This will show path info
+      LOGI("Log file location: %s", g_LogFilePath.c_str());
+    }
+    ImGui::Separator();
+
+    // Log content
+    if (ImGui::BeginChild("LogContent", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar))
+    {
+      for (const auto &entry : g_LogBuffer)
+      {
+        ImGui::TextColored(entry.color, "[%s] [%s] %s",
+                           entry.timestamp.c_str(), entry.level.c_str(), entry.message.c_str());
+      }
+
+      // Auto-scroll to bottom
+      if (g_AutoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+      {
+        ImGui::SetScrollHereY(1.0f);
+      }
+    }
+    ImGui::EndChild();
+  }
+  ImGui::End();
+}
 
 void hack();
 
@@ -62,8 +242,6 @@ private:
   JNIEnv *env_ = nullptr;
   bool is_game_ = false;
 };
-
-//========BYPASS========\\
 
 void SetDarkGrayTheme()
 {
@@ -131,17 +309,24 @@ void SetDarkGrayTheme()
   style->WindowRounding = 4.0f;
 }
 
-void (*Bypass1)(void *_this);
-void _Bypass1(void *_this)
-{
-  return;
-}
+//========BYPASS========\\
 
-void (*Bypass2)(void *_this);
-void _Bypass2(void *_this)
-{
-  return;
-}
+// Note: Bypass functions are placeholders for future anti-cheat bypass
+// Currently unused - can be removed or implemented as needed
+
+// void (*Bypass1)(void *_this);
+// void _Bypass1(void *_this)
+// {
+//   LOGD("Bypass1 called - placeholder function");
+//   return;
+// }
+
+// void (*Bypass2)(void *_this);
+// void _Bypass2(void *_this)
+// {
+//   LOGD("Bypass2 called - placeholder function");
+//   return;
+// }
 
 // ========================= \\
 
@@ -151,14 +336,6 @@ void *getRealAddr(ulong offset)
   return reinterpret_cast<void *>(il2cpp_base + offset);
 };
 
-namespace Settings
-{
-  static int Tab = 1;
-}
-
-bool clearMousePos = true;
-bool initImGui = false;
-
 inline EGLBoolean (*old_eglSwapBuffers)(EGLDisplay dpy, EGLSurface surface);
 inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 {
@@ -167,10 +344,11 @@ inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 
   if (!g_IsSetup)
   {
+    LOGD("Setting up ImGui...");
     prevWidth = g_GlWidth;
     prevHeight = g_GlHeight;
     SetupImgui();
-
+    LOGI("ImGui setup completed - Screen: %dx%d", g_GlWidth, g_GlHeight);
     g_IsSetup = true;
   }
 
@@ -194,7 +372,6 @@ inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
     case TouchPhase::Ended:
     case TouchPhase::Canceled:
       io.MouseDown[0] = false;
-      clearMousePos = true;
       break;
     case TouchPhase::Moved:
       io.MousePos = ImVec2(touch.m_Position.fields.x, reverseY);
@@ -205,6 +382,7 @@ inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
   }
 
   DrawESP(g_GlWidth, g_GlHeight);
+  RenderLogsWindow();                                                                                    // Render logs window
   ImGui::SetNextWindowSize(ImVec2((float)g_GlWidth * 0.35f, (float)g_GlHeight * 0.60f), ImGuiCond_Once); // Tăng kích thước để có không gian cho tabs
   // Zygisk Menu // You can Change here
   if (ImGui::Begin(OBFUSCATE("Zygisk by Ngoc [ x32/x64 ]"), 0, ImGuiWindowFlags_NoBringToFrontOnFocus))
@@ -244,7 +422,7 @@ inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         }
         if (ImGui::Button(OBFUSCATE("Disable All ESP"), ImVec2(-1, 0)))
         {
-          ESP_Enable = true;
+          ESP_Enable = false;
           ESP_Box = false;
           ESP_Line = false;
           ESP_Health = false;
@@ -341,6 +519,7 @@ inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         if (ImGui::Button(OBFUSCATE("Reset All Settings"), ImVec2(-1, 0)))
         {
           // Reset logic
+          ESP_Enable = false;
           ESP_Box = false;
           ESP_Line = false;
           ESP_Health = false;
@@ -374,6 +553,37 @@ inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
 
         ImGui::Separator();
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Use responsibly!");
+
+        ImGui::Spacing();
+        ImGui::Separator();
+
+        // Debug Controls
+        ImGui::Text("Debug Options");
+        ImGui::Separator();
+
+        if (ImGui::Button("Show Debug Logs", ImVec2(-1, 0)))
+        {
+          g_LogsVisible = true;
+        }
+
+        if (ImGui::Button("Test Log Messages", ImVec2(-1, 0)))
+        {
+          LOGD("Test debug message");
+          LOGI("Test info message");
+          LOGW("Test warning message");
+          LOGE("Test error message");
+        }
+
+        ImGui::Spacing();
+        if (ImGui::Button("Export All Logs", ImVec2(-1, 0)))
+        {
+          SaveLogsToFile();
+          LOGI("All logs exported to file: %s", g_LogFilePath.c_str());
+        }
+
+        ImGui::Text("Auto-save to file: %s", g_AutoSaveToFile ? "ON" : "OFF");
+        ImGui::Text("Log file: /sdcard/zygisk_ff_logs.txt");
+
         ImGui::EndTabItem();
       }
 
@@ -388,54 +598,74 @@ inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
   return old_eglSwapBuffers(dpy, surface);
 }
 
-typedef unsigned long DWORD;
-static uintptr_t libBase;
-
 inline void StartGUI()
 {
+  LOGD("Starting GUI initialization...");
   void *ptr_eglSwapBuffer = DobbySymbolResolver("/system/lib/libEGL.so", "eglSwapBuffers");
   if (ptr_eglSwapBuffer != nullptr)
   {
+    LOGI("eglSwapBuffers found at address: %p", ptr_eglSwapBuffer);
     DobbyHook((void *)ptr_eglSwapBuffer, (void *)hook_eglSwapBuffers, (void **)&old_eglSwapBuffers);
-    LOGD("GUI started successfully");
+    LOGI("GUI started successfully");
+  }
+  else
+  {
+    LOGE("Failed to find eglSwapBuffers symbol");
   }
 }
 
 void hack_thread(pid_t pid)
 {
-  LOGD("Hack Thread initiated for PID: %i", pid);
+  LOGD("=== ZYGISK FF HACK THREAD START ===");
+  LOGD("Thread PID: %i", pid);
 
   for (int i = 0; i < 10; i++)
   {
+    LOGD("Searching for libil2cpp.so... attempt %d/10", i + 1);
     il2cpp_base = get_module_base(pid, "libil2cpp.so");
     if (il2cpp_base != 0)
+    {
+      LOGI("libil2cpp.so found!");
       break;
+    }
+    LOGD("libil2cpp.so not found, waiting 10 seconds...");
     sleep(10);
   }
 
   if (il2cpp_base == 0)
   {
-    LOGE("libil2cpp.so not found in thread %d", pid);
+    LOGE("CRITICAL: libil2cpp.so not found after 10 attempts!");
+    LOGE("Thread %d terminating", pid);
     std::terminate();
   }
 
-  LOGD("IL2CPP base address: 0x%" PRIxPTR, il2cpp_base);
+  LOGI("IL2CPP base address: 0x%" PRIxPTR, il2cpp_base);
+  LOGD("Waiting 10 seconds before attachment...");
   sleep(10);
 
+  LOGD("Starting IL2CPP attachment...");
   Il2CppAttach();
+  LOGI("IL2CPP attached successfully");
   // If you have Your own bypass then past here 🙂
   // =======
 
   //=======
 
+  LOGD("Initializing GUI...");
   StartGUI();
+  LOGD("=== ZYGISK FF INITIALIZATION COMPLETE ===");
 }
 
 void hack()
 {
-  LOGD("Inject Ok");
+  // Initialize log file at start
+  InitLogFile();
+
+  LOGI("*** ZYGISK FF INJECTION SUCCESSFUL ***");
+  LOGD("Starting hack thread...");
   std::thread thread_hack(hack_thread, getpid());
   thread_hack.detach();
+  LOGD("Hack thread detached successfully");
 }
 
 REGISTER_ZYGISK_MODULE(MyModule)
