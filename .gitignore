@@ -1,0 +1,61 @@
+# Build outputs
+build
+src/main/obj/
+src/main/libs/
+*.so
+*.a
+*.o
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+
+# NDK build files
+ndk-build.cmd
+local.properties
+
+# Android Studio
+.gradle/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Generated files
+gen/
+out/
+
+# Keystore files
+*.jks
+*.keystore
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# APK files
+*.apk
+*.aab
+
+# Proguard
+proguard/
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# NDK
+ndk/
