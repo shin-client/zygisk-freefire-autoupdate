@@ -10,7 +10,7 @@ include $(PREBUILT_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE           := VM
+LOCAL_MODULE           := NgocDev
 
 LOCAL_CFLAGS           := -Wno-error=format-security -fvisibility=hidden -ffunction-sections -fdata-sections -w
 LOCAL_CFLAGS           += -fno-rtti -fno-exceptions -fpermissive
