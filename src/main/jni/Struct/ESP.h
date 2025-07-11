@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include <stdio.h>
@@ -18,7 +17,9 @@
 #include "Unity/unity.h"
 #include "Class.h"
 #include "Rect.h"
-inline static int g_GlHeight, g_GlWidth;
+
+extern int g_GlWidth, g_GlHeight;
+
 #include "Bools.h"
 #include <math.h>
 #include <stdio.h>
@@ -195,7 +196,7 @@ void *GetClosestEnemy()
   void *get_MatchGame = Curent_Match();
   void *LocalPlayer = GetLocalPlayer(get_MatchGame);
 
-  if (LocalPlayer != NULL && get_MatchGame != NULL && Enable && get_MatchGame)
+  if (LocalPlayer != NULL && get_MatchGame != NULL)
   {
     monoDictionary<uint8_t *, void **> *players = *(monoDictionary<uint8_t *, void **> **)((long)get_MatchGame + ListPlayer);
 
@@ -281,7 +282,7 @@ inline void DrawESP(float screenWidth, float screenHeight)
     }
   }
 
-  if (Enable)
+  if (ESP_Enable)
   {
     int totalEnemies = 0, totalBots = 0;
     void *current_Match = Curent_Match();
@@ -309,38 +310,42 @@ inline void DrawESP(float screenWidth, float screenHeight)
             if (HeadPosition.z < 1)
               continue;
 
-            draw->AddCircle(ImVec2(screenWidth / 2, screenHeight / 2), Fov_Aim, ImColor(255, 255, 255), 0, 1.5f);
+            // FOV Circle for Aimbot
+            if (ESP_FOVCircle)
+            {
+              draw->AddCircle(ImVec2(screenWidth / 2, screenHeight / 2), Fov_Aim, ImColor(255, 255, 255), 0, 1.5f);
+            }
 
             float distance = Vector3::Distance(getPosition(local_player), Toepos);
             float Hight = abs(HeadPosition.y - Toeposi.y) * (1.2 / 1.1);
             float Width = Hight * 0.50f;
             Rect rect = Rect(HeadPosition.x - Width / 2.f, screenHeight - HeadPosition.y, Width, Hight);
 
-            if (Config.ESP.Line)
+            // Line ESP
+            if (ESP_Line)
             {
               draw->AddLine(ImVec2(screenWidth / 2, 80), ImVec2(rect.x + rect.w / 2, rect.y + rect.h / 35), ImColor(255, 255, 255), 1.7);
             }
 
-            if (Config.ESP.Box)
+            // Box ESP
+            if (ESP_Box)
             {
               int x = rect.x;
               int y = rect.y;
               draw->AddRect(ImVec2(x, y), ImVec2(x + rect.w, y + rect.h), ImColor(255, 255, 255), visual_esp_box, 0, visual_esp_boxth);
             }
 
-            if (get_IsDieing(closestEnemy))
+            // Health ESP
+            if (ESP_Health)
             {
-              if (Config.ESP.Health)
+              if (get_IsDieing(closestEnemy))
               {
                 int xx = rect.x + rect.w + 2;
                 int yy = rect.y;
                 draw->AddRectFilled(ImVec2(xx, yy), ImVec2(xx + 5, yy + rect.h), ImColor(0, 0, 0, 255));
                 draw->AddRectFilled(ImVec2(xx + 1, yy + rect.h - (rect.h * ((float)GetHp(closestEnemy) / get_MaxHP(closestEnemy)))), ImVec2(xx + 4, yy + rect.h), die);
               }
-            }
-            else
-            {
-              if (Config.ESP.Health)
+              else
               {
                 long clr = ImColor(0, 255, 0, 255);
 
@@ -360,7 +365,8 @@ inline void DrawESP(float screenWidth, float screenHeight)
               }
             }
 
-            if (Config.ESP.Health)
+            // Name and Distance ESP
+            if (ESP_Name || ESP_Distance)
             {
               monoString *Nick = get_NickName(closestEnemy);
               std::string names;
@@ -371,26 +377,37 @@ inline void DrawESP(float screenWidth, float screenHeight)
                 for (int i = 0; i < nick_Len; i++)
                 {
                   char data = get_Chars(Nick, i);
-                  names += isascii(data) ? data : '?';
+                  // support UTF-8
+                  names += data;
                 }
               }
-              std::string nickname3;
-              nickname3 += "";
-              nickname3 += "[";
-              nickname3 += int_to_string((int)distance).c_str();
-              nickname3 += "] ";
-              nickname3 += names;
-              if (get_IsDieing(closestEnemy))
+
+              std::string displayText;
+              if (ESP_Distance)
               {
-                ImVec2 nicksize = ImGui::CalcTextSize(nickname3.c_str());
-                draw->AddText(ImVec2(rect.x + (rect.w / 2) - (nicksize.x / 2), rect.y - nicksize.y),
-                              ImColor(255, 0, 0), nickname3.c_str());
+                displayText += "[";
+                displayText += int_to_string((int)distance).c_str();
+                displayText += "] ";
               }
-              else
+              if (ESP_Name)
               {
-                ImVec2 nicksize = ImGui::CalcTextSize(nickname3.c_str());
-                draw->AddText(ImVec2(rect.x + (rect.w / 2) - (nicksize.x / 2), rect.y - nicksize.y),
-                              ImColor(255, 255, 0), nickname3.c_str());
+                displayText += names;
+              }
+
+              if (!displayText.empty())
+              {
+                if (get_IsDieing(closestEnemy))
+                {
+                  ImVec2 textSize = ImGui::CalcTextSize(displayText.c_str());
+                  draw->AddText(ImVec2(rect.x + (rect.w / 2) - (textSize.x / 2), rect.y - textSize.y),
+                                ImColor(255, 0, 0), displayText.c_str());
+                }
+                else
+                {
+                  ImVec2 textSize = ImGui::CalcTextSize(displayText.c_str());
+                  draw->AddText(ImVec2(rect.x + (rect.w / 2) - (textSize.x / 2), rect.y - textSize.y),
+                                ImColor(255, 255, 0), displayText.c_str());
+                }
               }
             }
           }
