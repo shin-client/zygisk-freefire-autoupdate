@@ -33,7 +33,7 @@ int g_GlWidth, g_GlHeight;
 // Global log storage - moved from header
 std::vector<LogEntry> g_LogBuffer;
 bool g_AutoScroll = true;
-bool g_LogsVisible = true;
+bool g_LogsVisible = false;
 bool g_AutoSaveToFile = true;
 std::string g_LogFilePath = "/sdcard/zygisk_ff_logs.txt";
 const int MAX_LOG_ENTRIES = 1000;
