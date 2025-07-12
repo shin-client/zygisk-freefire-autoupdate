@@ -1,8 +1,11 @@
 #pragma once
 
 #include "Bools.h"
-#include "Logger.h" // Include logging system
 #include "../Dobby/dobby.h"
+
+// ============================================================================
+// UTILITY CLASSES
+// ============================================================================
 
 class Vvector3
 {
@@ -19,130 +22,97 @@ public:
 Vvector3::Vvector3(const Vvector3 &v) : X(v.X), Y(v.Y), Z(v.Z) {}
 Vvector3::~Vvector3() {}
 
-#define Class_Camera__get_main (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Camera"), OBFUSCATE("get_main"))
+// ============================================================================
+// UNITY ENGINE OFFSETS
+// ============================================================================
 
+// Camera System
+#define Class_Camera__get_main (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Camera"), OBFUSCATE("get_main"))
+#define Class_Camera__WorldToScreenPoint (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Camera"), OBFUSCATE("WorldToScreenPoint"), 1)
+#define Camera_get_fieldOfView (uintptr_t)Il2CppGetMethodOffset("UnityEngine.dll", "UnityEngine", "Camera", "get_fieldOfView")
+#define Camera_set_fieldOfView (uintptr_t)Il2CppGetMethodOffset("UnityEngine.dll", "UnityEngine", "Camera", "set_fieldOfView", 1)
+
+// Input System
 #define Class_Input__get_touchCount (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Input"), OBFUSCATE("get_touchCount"))
 #define Class_Input__GetTouch (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Input"), OBFUSCATE("GetTouch"), 1)
 #define Class_Input__get_mousePosition (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Input"), OBFUSCATE("get_mousePosition"))
 
-// Class Screen -> UnityEngine.dll
+// Screen System
 #define Class_Screen__get_width (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Screen"), OBFUSCATE("get_width"))
 #define Class_Screen__get_height (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Screen"), OBFUSCATE("get_height"))
 #define Class_Screen__get_density (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Screen"), OBFUSCATE("get_dpi"))
 
-#define Camera_get_fieldOfView (uintptr_t)Il2CppGetMethodOffset("UnityEngine.dll", "UnityEngine", "Camera", "get_fieldOfView")
-#define Camera_set_fieldOfView (uintptr_t)Il2CppGetMethodOffset("UnityEngine.dll", "UnityEngine", "Camera", "set_fieldOfView", 1)
-
-#define ForWard (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Transform"), OBFUSCATE("get_forward"), 0)
-
+// Transform System
 #define Class_Transform__GetPosition Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Transform"), OBFUSCATE("get_position_Injected"), 1)
-
 #define Class_Transform__SetPosition Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Transform"), OBFUSCATE("set_position_Injected"), 1)
-
-#define Class_Camera__get_main (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Camera"), OBFUSCATE("get_main"))
-#define Class_Camera__WorldToScreenPoint (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Camera"), OBFUSCATE("WorldToScreenPoint"), 1)
-
-#define Class_Component__get_transform (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Component"), OBFUSCATE("get_transform"), 0)
 #define Class_Transform__get_position (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Transform"), OBFUSCATE("get_position"), 0)
-
 #define Class_Transform__Position Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Transform"), OBFUSCATE("get_position"), 0)
-
 #define Class_Transform__Rotation Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Transform"), OBFUSCATE("get_rotation"), 0)
-
-#define Class_Compent__Transform Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Component"), OBFUSCATE("get_transform"), 0)
-// Class Player
-
-void *get_main()
-{
-  return reinterpret_cast<void *(__fastcall *)()>(Class_Camera__get_main)();
-}
-
-float get_fieldOfView()
-{
-  return reinterpret_cast<float(__fastcall *)(void *)>(Camera_get_fieldOfView)(get_main());
-}
-
-void *set_fieldOfView(float value)
-{
-  return reinterpret_cast<void *(__fastcall *)(void *, float)>(Camera_set_fieldOfView)(get_main(), value);
-}
-
-static void Transform_INTERNAL_SetPosition(void *player, Vvector3 inn)
-{
-  void (*Transform_INTERNAL_SetPosition)(void *transform, Vvector3 in) = (void (*)(void *, Vvector3))(Class_Transform__SetPosition);
-  Transform_INTERNAL_SetPosition(player, inn);
-}
-
-static Quaternion GetRotation(void *player)
-{
-  Quaternion (*_GetRotation)(void *players) = (Quaternion (*)(void *))(Class_Transform__Rotation);
-  return _GetRotation(player);
-}
-
-#define Class_Camera__WorldToScreenPoint (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Camera"), OBFUSCATE("WorldToScreenPoint"), 1)
-
-#define Class_Component__get_transform (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Component"), OBFUSCATE("get_transform"), 0)
-#define Class_Transform__get_position (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Transform"), OBFUSCATE("get_position"), 0)
-
-#define Class_Transform__Position Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Transform"), OBFUSCATE("get_position"), 0)
-
-#define Class_Compent__Transform Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Component"), OBFUSCATE("get_transform"), 0)
-// Class Player
-#define ListPlayer (uintptr_t)Il2CppGetFieldOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("NFJPHMKKEBF"), OBFUSCATE("HOOCHDLKOOG"))
-
-#define EnemyUpdate (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("LateUpdate"), 0)
-
-#define MainCam (uintptr_t)Il2CppGetFieldOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("MainCameraTransform"))
-
-#define Match (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW"), OBFUSCATE("GameFacade"), OBFUSCATE("CurrentMatch"), 0)
-
-#define Local (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW"), OBFUSCATE("UIHudDetectorController"), OBFUSCATE("GetLocalPlayer"), 0)
-
-#define Visible (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("IsVisible"), 0)
-
-#define Team (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("IsLocalTeammate"), 0)
-
-#define Die (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("get_IsDieing"), 0)
-
-#define CurHP (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("get_CurHP"), 0)
-
-#define MaxHP (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("get_MaxHP"), 0)
-
-#define Name (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("get_NickName"), 0)
-
-#define Aim (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("SetAimRotation"), 1)
-
-#define Scope (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("get_IsSighting"), 0)
-
-#define Fire (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("IsFiring"), 0)
-
-#define LocalBool (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("IsLocalPlayer"), 0)
-
-#define CarLocal (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("VehicleIAmIn"), 0)
-
-#define GetCar (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("get_IsDriver"), 0)
-
-#define Head (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("GetHeadTF"), 0)
-
 #define ForWard (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Transform"), OBFUSCATE("get_forward"), 0)
 
-#define Report1 (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW"), OBFUSCATE("InteractionPopUtil"), OBFUSCATE("CreateReportPlayer"), 3)
+// Component System
+#define Class_Component__get_transform (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Component"), OBFUSCATE("get_transform"), 0)
+#define Class_Compent__Transform Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Component"), OBFUSCATE("get_transform"), 0)
 
-#define Report2 (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW"), OBFUSCATE("UIHudMatchResultItemBaseController"), OBFUSCATE("SetReportData"), 4)
-
-#define Report3 (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW"), OBFUSCATE("UIModelVoice"), OBFUSCATE("get_ReportedPlayerTimeDict"), 0)
-
-#define Report4 (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW"), OBFUSCATE("InteractionPopUtil"), OBFUSCATE("CreateAddToBlackList"), 3)
-
-#define CharGet (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("mscorlib.dll"), OBFUSCATE("System"), OBFUSCATE("String"), OBFUSCATE("get_Chars"), 1)
-
-#define Raycast (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("JEAGCMACNNC"), OBFUSCATE("PLDCHDBCOBF"), 4)
-
-#define HeadColider (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("get_HeadCollider"), 0)
-
+// Time System
 #define Time (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Time"), OBFUSCATE("get_deltaTime"), 0)
 
-// Anti-Report Functions
+// ============================================================================
+// GAME SPECIFIC OFFSETS
+// ============================================================================
+
+// Player System
+#define ListPlayer (uintptr_t)Il2CppGetFieldOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("NFJPHMKKEBF"), OBFUSCATE("HOOCHDLKOOG"))
+#define EnemyUpdate (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("LateUpdate"), 0)
+#define MainCam (uintptr_t)Il2CppGetFieldOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("MainCameraTransform"))
+#define Head (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("GetHeadTF"), 0)
+#define HeadColider (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("get_HeadCollider"), 0)
+
+// Player Status
+#define Visible (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("IsVisible"), 0)
+#define Team (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("IsLocalTeammate"), 0)
+#define Die (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("get_IsDieing"), 0)
+#define LocalBool (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("IsLocalPlayer"), 0)
+
+// Player Health
+#define CurHP (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("get_CurHP"), 0)
+#define MaxHP (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("get_MaxHP"), 0)
+
+// Player Info
+#define Name (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("get_NickName"), 0)
+
+// Player Actions
+#define Aim (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("SetAimRotation"), 1)
+#define Scope (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("get_IsSighting"), 0)
+#define Fire (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("IsFiring"), 0)
+
+// Vehicle System
+#define CarLocal (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("VehicleIAmIn"), 0)
+#define GetCar (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), OBFUSCATE("get_IsDriver"), 0)
+
+// Game Management
+#define Match (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW"), OBFUSCATE("GameFacade"), OBFUSCATE("CurrentMatch"), 0)
+#define Local (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW"), OBFUSCATE("UIHudDetectorController"), OBFUSCATE("GetLocalPlayer"), 0)
+
+// Physics System
+#define Raycast (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("JEAGCMACNNC"), OBFUSCATE("PLDCHDBCOBF"), 4)
+
+// String System
+#define CharGet (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("mscorlib.dll"), OBFUSCATE("System"), OBFUSCATE("String"), OBFUSCATE("get_Chars"), 1)
+
+// ============================================================================
+// ANTI-REPORT OFFSETS
+// ============================================================================
+
+#define Report1 (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW"), OBFUSCATE("InteractionPopUtil"), OBFUSCATE("CreateReportPlayer"), 3)
+#define Report2 (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW"), OBFUSCATE("UIHudMatchResultItemBaseController"), OBFUSCATE("SetReportData"), 4)
+#define Report3 (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW"), OBFUSCATE("UIModelVoice"), OBFUSCATE("get_ReportedPlayerTimeDict"), 0)
+#define Report4 (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW"), OBFUSCATE("InteractionPopUtil"), OBFUSCATE("CreateAddToBlackList"), 3)
+
+// ============================================================================
+// ANTI-REPORT HOOK FUNCTIONS
+// ============================================================================
+
 static void *(*orig_CreateReportPlayer)(void *util, void *player, int reason) = nullptr;
 static void *hook_CreateReportPlayer(void *util, void *player, int reason)
 {
@@ -177,16 +147,49 @@ static void *hook_CreateAddToBlackList(void *util, void *player, int reason)
   return orig_CreateAddToBlackList(util, player, reason);
 }
 
-static void *Player_GetHeadCollider(void *player)
+// ============================================================================
+// UNITY ENGINE FUNCTIONS
+// ============================================================================
+
+// Camera Functions
+void *get_main()
 {
-  void *(*_Player_GetHeadCollider)(void *players) = (void *(*)(void *))(HeadColider);
-  return _Player_GetHeadCollider(player);
+  return reinterpret_cast<void *(__fastcall *)()>(Class_Camera__get_main)();
 }
 
-static void *GetLocalPlayer(void *Game)
+static void *Camera_main()
 {
-  void *(*_GetLocalPlayer)(void *match) = (void *(*)(void *))(Local);
-  return _GetLocalPlayer(Game);
+  void *(*_Camera_main)(void *nuls) = (void *(*)(void *))(Class_Camera__get_main);
+  return _Camera_main(nullptr);
+}
+
+float get_fieldOfView()
+{
+  return reinterpret_cast<float(__fastcall *)(void *)>(Camera_get_fieldOfView)(get_main());
+}
+
+void *set_fieldOfView(float value)
+{
+  return reinterpret_cast<void *(__fastcall *)(void *, float)>(Camera_set_fieldOfView)(get_main(), value);
+}
+
+static Vector3 WorldToScreenPoint(void *WorldCam, Vector3 WorldPos)
+{
+  Vector3 (*_WorldToScreenScene)(void *Camera, Vector3 position) = (Vector3 (*)(void *, Vector3))(Class_Camera__WorldToScreenPoint);
+  return _WorldToScreenScene(WorldCam, WorldPos);
+}
+
+// Transform Functions
+static void Transform_INTERNAL_SetPosition(void *player, Vvector3 inn)
+{
+  void (*Transform_INTERNAL_SetPosition)(void *transform, Vvector3 in) = (void (*)(void *, Vvector3))(Class_Transform__SetPosition);
+  Transform_INTERNAL_SetPosition(player, inn);
+}
+
+static Quaternion GetRotation(void *player)
+{
+  Quaternion (*_GetRotation)(void *players) = (Quaternion (*)(void *))(Class_Transform__Rotation);
+  return _GetRotation(player);
 }
 
 static Vector3 Transform_GetPosition(void *player)
@@ -195,18 +198,6 @@ static Vector3 Transform_GetPosition(void *player)
   void (*_Transform_GetPosition)(void *transform, Vector3 *out) = (void (*)(void *, Vector3 *))(Class_Transform__GetPosition);
   _Transform_GetPosition(player, &out);
   return out;
-}
-
-static void *Curent_Match()
-{
-  void *(*_Curent_Match)(void *nuls) = (void *(*)(void *))(Match);
-  return _Curent_Match(NULL);
-}
-
-static void *GetHeadPositions(void *player)
-{
-  void *(*_GetHeadPositions)(void *players) = (void *(*)(void *))(Head);
-  return _GetHeadPositions(player);
 }
 
 Vector3 get_position(void *player)
@@ -221,18 +212,58 @@ static void *Component_GetTransform(void *player)
   return _Component_GetTransform(player);
 }
 
-static Vector3 WorldToScreenPoint(void *WorldCam, Vector3 WorldPos)
+static Vector3 GetForward(void *player)
 {
-  Vector3 (*_WorldToScreenScene)(void *Camera, Vector3 position) = (Vector3 (*)(void *, Vector3))(Class_Camera__WorldToScreenPoint);
-  return _WorldToScreenScene(WorldCam, WorldPos);
+  Vector3 (*_GetForward)(void *players) = (Vector3 (*)(void *))(ForWard);
+  return _GetForward(player);
 }
 
-static void *Camera_main()
+Vector3 getPosition(void *transform)
 {
-  void *(*_Camera_main)(void *nuls) = (void *(*)(void *))(Class_Camera__get_main);
-  return _Camera_main(nullptr);
+  return get_position(Component_GetTransform(transform));
 }
 
+// Screen Functions
+int get_width()
+{
+  return reinterpret_cast<int(__fastcall *)()>(Class_Screen__get_width)();
+}
+
+int get_height()
+{
+  return reinterpret_cast<int(__fastcall *)()>(Class_Screen__get_height)();
+}
+
+float get_density()
+{
+  return reinterpret_cast<float(__fastcall *)()>(Class_Screen__get_density)();
+}
+
+// Physics Functions
+static bool Physics_Raycast(Vector3 camLocation, Vector3 headLocation, unsigned int LayerID, void *collider)
+{
+  bool (*_Physics_Raycast)(Vector3 camLocation, Vector3 headLocation, unsigned int LayerID, void *collider) = (bool (*)(Vector3, Vector3, unsigned int, void *))(Raycast);
+  return _Physics_Raycast(camLocation, headLocation, LayerID, collider);
+}
+
+// ============================================================================
+// GAME SPECIFIC FUNCTIONS
+// ============================================================================
+
+// Game Management
+static void *Curent_Match()
+{
+  void *(*_Curent_Match)(void *nuls) = (void *(*)(void *))(Match);
+  return _Curent_Match(NULL);
+}
+
+static void *GetLocalPlayer(void *Game)
+{
+  void *(*_GetLocalPlayer)(void *match) = (void *(*)(void *))(Local);
+  return _GetLocalPlayer(Game);
+}
+
+// Player Status Functions
 static bool get_isVisible(void *player)
 {
   bool (*_get_isVisible)(void *players) = (bool (*)(void *))(Visible);
@@ -251,106 +282,10 @@ static bool get_IsDieing(void *player)
   return _get_die(player);
 }
 
-static int GetHp(void *player)
-{
-  int (*_GetHp)(void *players) = (int (*)(void *))(CurHP);
-  return _GetHp(player);
-}
-
-static int get_MaxHP(void *enemy)
-{
-  int (*_get_MaxHP)(void *player) = (int (*)(void *))(MaxHP);
-  return _get_MaxHP(enemy);
-}
-
-static monoString *get_NickName(void *player)
-{
-  monoString *(*_get_NickName)(void *players) = (monoString * (*)(void *))(Name);
-  return _get_NickName(player);
-}
-
-static Vector3 GetForward(void *player)
-{
-  Vector3 (*_GetForward)(void *players) = (Vector3 (*)(void *))(ForWard);
-  return _GetForward(player);
-}
-
 static bool IsLocal(void *player)
 {
   bool (*_isMe)(void *players) = (bool (*)(void *))(LocalBool);
   return _isMe(player);
-}
-
-static void *GetLocalCar(void *playerCar)
-{
-  void *(*_Player_get_local)(void *Player) = (void *(*)(void *))(CarLocal);
-  return _Player_get_local(playerCar);
-}
-static bool IsDriver(void *player)
-{
-  bool (*_IsDriver)(void *players) = (bool (*)(void *))(GetCar);
-  return _IsDriver(player);
-}
-
-static void set_aim(void *player, Quaternion look)
-{
-  void (*_set_aim)(void *players, Quaternion lock) = (void (*)(void *, Quaternion))(Aim);
-  _set_aim(player, look);
-}
-
-char get_Chars(monoString *str, int index)
-{
-  char (*_get_Chars)(monoString *str, int index) = (char (*)(monoString *, int))(CharGet);
-  return _get_Chars(str, index);
-}
-
-// Better UTF-8 support function
-wchar_t get_Chars_Wide(monoString *str, int index)
-{
-  wchar_t (*_get_Chars)(monoString *str, int index) = (wchar_t (*)(monoString *, int))(CharGet);
-  return _get_Chars(str, index);
-}
-
-// Safe UTF-8 string extraction
-std::string get_UTF8_String(monoString *str)
-{
-  if (str == nullptr)
-    return "";
-
-  int len = str->getLength();
-  if (len <= 0 || len > 1000)
-    return ""; // Safety check
-
-  std::wstring wstr;
-  for (int i = 0; i < len; i++)
-  {
-    wchar_t wch = get_Chars_Wide(str, i);
-    if (wch != 0)
-      wstr += wch;
-  }
-
-  // Convert wide string to UTF-8
-  std::string utf8_str;
-  for (wchar_t wch : wstr)
-  {
-    if (wch < 0x80) // ASCII
-    {
-      utf8_str += (char)wch;
-    }
-    else if (wch < 0x800) // 2-byte UTF-8
-    {
-      utf8_str += (char)(0xC0 | (wch >> 6));
-      utf8_str += (char)(0x80 | (wch & 0x3F));
-    }
-    else // 3-byte UTF-8 (covers most cases)
-    {
-      utf8_str += (char)(0xE0 | (wch >> 12));
-      utf8_str += (char)(0x80 | ((wch >> 6) & 0x3F));
-      utf8_str += (char)(0x80 | (wch & 0x3F));
-    }
-  }
-
-  return utf8_str;
 }
 
 static bool get_IsSighting(void *player)
@@ -365,15 +300,30 @@ static bool get_IsFiring(void *player)
   return _get_IsFiring(player);
 }
 
-static bool Physics_Raycast(Vector3 camLocation, Vector3 headLocation, unsigned int LayerID, void *collider)
+// Player Health Functions
+static int GetHp(void *player)
 {
-  bool (*_Physics_Raycast)(Vector3 camLocation, Vector3 headLocation, unsigned int LayerID, void *collider) = (bool (*)(Vector3, Vector3, unsigned int, void *))(Raycast);
-  return _Physics_Raycast(camLocation, headLocation, LayerID, collider);
+  int (*_GetHp)(void *players) = (int (*)(void *))(CurHP);
+  return _GetHp(player);
 }
 
-Vector3 getPosition(void *transform)
+static int get_MaxHP(void *enemy)
 {
-  return get_position(Component_GetTransform(transform));
+  int (*_get_MaxHP)(void *player) = (int (*)(void *))(MaxHP);
+  return _get_MaxHP(enemy);
+}
+
+// Player Position Functions
+static void *GetHeadPositions(void *player)
+{
+  void *(*_GetHeadPositions)(void *players) = (void *(*)(void *))(Head);
+  return _GetHeadPositions(player);
+}
+
+static void *Player_GetHeadCollider(void *player)
+{
+  void *(*_Player_GetHeadCollider)(void *players) = (void *(*)(void *))(HeadColider);
+  return _Player_GetHeadCollider(player);
 }
 
 static Vector3 GetHeadPosition(void *player)
@@ -386,20 +336,153 @@ static Vector3 CameraMain(void *player)
   return get_position(*(void **)((uint64_t)player + MainCam));
 }
 
-int get_width()
+// Player Action Functions
+static void set_aim(void *player, Quaternion look)
 {
-  return reinterpret_cast<int(__fastcall *)()>(Class_Screen__get_width)();
+  void (*_set_aim)(void *players, Quaternion lock) = (void (*)(void *, Quaternion))(Aim);
+  _set_aim(player, look);
 }
 
-int get_height()
+// Vehicle Functions
+static void *GetLocalCar(void *playerCar)
 {
-  return reinterpret_cast<int(__fastcall *)()>(Class_Screen__get_height)();
+  void *(*_Player_get_local)(void *Player) = (void *(*)(void *))(CarLocal);
+  return _Player_get_local(playerCar);
 }
 
-float get_density()
+static bool IsDriver(void *player)
 {
-  return reinterpret_cast<float(__fastcall *)()>(Class_Screen__get_density)();
+  bool (*_IsDriver)(void *players) = (bool (*)(void *))(GetCar);
+  return _IsDriver(player);
 }
+
+// Player Info Functions
+static monoString *get_NickName(void *player)
+{
+  monoString *(*_get_NickName)(void *players) = (monoString * (*)(void *))(Name);
+  return _get_NickName(player);
+}
+
+// ============================================================================
+// STRING PROCESSING FUNCTIONS
+// ============================================================================
+
+char get_Chars(monoString *str, int index)
+{
+  char (*_get_Chars)(monoString *str, int index) = (char (*)(monoString *, int))(CharGet);
+  return _get_Chars(str, index);
+}
+
+// Better UTF-8 support function
+wchar_t get_Chars_Wide(monoString *str, int index)
+{
+  wchar_t (*_get_Chars)(monoString *str, int index) = (wchar_t (*)(monoString *, int))(CharGet);
+  return _get_Chars(str, index);
+}
+
+// Safe UTF-8 string extraction with full Unicode support and error handling
+std::string get_UTF8_String_Safe(monoString *str)
+{
+  if (str == nullptr)
+    return "";
+
+  int len = str->getLength();
+  if (len <= 0 || len > 1000)
+    return ""; // Safety check
+
+  try
+  {
+    std::string utf8_str;
+    utf8_str.reserve(len * 3); // Reserve space for efficiency
+
+    for (int i = 0; i < len; i++)
+    {
+      wchar_t wch = get_Chars_Wide(str, i);
+
+      // Skip null characters
+      if (wch == 0)
+        continue;
+
+      // Convert to UTF-8 with full Unicode support
+      if (wch < 0x80) // ASCII (0-127)
+      {
+        utf8_str += (char)wch;
+      }
+      else if (wch < 0x800) // 2-byte UTF-8 (128-2047)
+      {
+        utf8_str += (char)(0xC0 | (wch >> 6));
+        utf8_str += (char)(0x80 | (wch & 0x3F));
+      }
+      else if (wch < 0xD800 || wch > 0xDFFF) // 3-byte UTF-8 (not surrogate)
+      {
+        utf8_str += (char)(0xE0 | (wch >> 12));
+        utf8_str += (char)(0x80 | ((wch >> 6) & 0x3F));
+        utf8_str += (char)(0x80 | (wch & 0x3F));
+      }
+      else if (wch >= 0xD800 && wch <= 0xDBFF && i + 1 < len) // High surrogate
+      {
+        // Handle surrogate pairs for 4-byte UTF-8 (emojis, rare characters)
+        wchar_t low = get_Chars_Wide(str, i + 1);
+        if (low >= 0xDC00 && low <= 0xDFFF) // Valid low surrogate
+        {
+          // Calculate the full Unicode codepoint
+          uint32_t codepoint = 0x10000 + ((wch & 0x3FF) << 10) + (low & 0x3FF);
+
+          // Encode as 4-byte UTF-8
+          utf8_str += (char)(0xF0 | (codepoint >> 18));
+          utf8_str += (char)(0x80 | ((codepoint >> 12) & 0x3F));
+          utf8_str += (char)(0x80 | ((codepoint >> 6) & 0x3F));
+          utf8_str += (char)(0x80 | (codepoint & 0x3F));
+
+          i++; // Skip the next character as it's the low surrogate
+        }
+        else
+        {
+          // Invalid surrogate pair, replace with replacement character
+          utf8_str += "\xEF\xBF\xBD"; // UTF-8 replacement character �
+        }
+      }
+      else
+      {
+        // Invalid or standalone surrogate, replace with replacement character
+        utf8_str += "\xEF\xBF\xBD"; // UTF-8 replacement character �
+      }
+    }
+
+    // Basic validation - check if result is reasonable
+    if (utf8_str.length() > len * 4) // UTF-8 shouldn't be more than 4x original
+    {
+      throw std::runtime_error("UTF-8 result too long");
+    }
+
+    return utf8_str;
+  }
+  catch (...)
+  {
+    // Fallback to simple ASCII extraction if UTF-8 conversion fails
+    std::string ascii_str;
+    for (int i = 0; i < len && i < 100; i++) // Limit to 100 chars for safety
+    {
+      char ch = get_Chars(str, i);
+      if (ch >= 32 && ch <= 126) // Printable ASCII only
+      {
+        ascii_str += ch;
+      }
+      else if (ch == 0)
+      {
+        break; // Stop at null terminator
+      }
+    }
+    return ascii_str.empty() ? "***" : ascii_str;
+  }
+}
+
+// Alias for backward compatibility
+#define get_UTF8_String get_UTF8_String_Safe
+
+// ============================================================================
+// ANTI-REPORT SYSTEM SETUP
+// ============================================================================
 
 // Anti-Report Setup Function
 void SetupAntiReport()
@@ -448,4 +531,6 @@ void SetupAntiReport()
   LOGI("Anti-Report system setup completed");
 }
 
-// Auto Update Offset . No need to change anything
+// ============================================================================
+// AUTO UPDATE OFFSET - NO NEED TO CHANGE ANYTHING
+// ============================================================================

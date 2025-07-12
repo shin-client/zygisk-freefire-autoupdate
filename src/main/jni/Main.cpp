@@ -17,10 +17,11 @@
 #include <CydiaSubstrate.h>
 #include "Struct/Gui.hpp"
 #include <Struct/main.h>
-#include "Struct/Logger.h" // Include our logging system
 #include "fonts/FontAwesome6_solid.h"
 #include "ImGui/Toggle.h"
 #include "zygisk.hpp"
+#include "Struct/Class.h"
+#include "Struct/obfuscate.h"
 
 using zygisk::Api;
 using zygisk::AppSpecializeArgs;
@@ -56,13 +57,51 @@ void InitLogFile()
   if (!g_AutoSaveToFile)
     return;
 
+  LOGD("Initializing log file: %s", g_LogFilePath.c_str());
+
   std::ofstream logFile(g_LogFilePath, std::ios::out | std::ios::trunc);
-  if (logFile.is_open())
+  if (!logFile.is_open())
+  {
+    // Try alternative paths
+    std::vector<std::string> altPaths = {
+        "/storage/emulated/0/Download/zygisk_ff_logs.txt",
+        "/data/data/com.dts.freefiremax/zygisk_ff_logs.txt",
+        "/data/data/com.dts.freefireth/zygisk_ff_logs.txt"};
+
+    for (const auto &altPath : altPaths)
+    {
+      LOGW("Trying alternative path: %s", altPath.c_str());
+      logFile.open(altPath, std::ios::out | std::ios::trunc);
+      if (logFile.is_open())
+      {
+        g_LogFilePath = altPath;
+        LOGI("Successfully switched to log path: %s", altPath.c_str());
+        break;
+      }
+    }
+
+    if (!logFile.is_open())
+    {
+      LOGE("Failed to initialize any log file path");
+      g_AutoSaveToFile = false; // Disable auto-save if no path works
+      return;
+    }
+  }
+
+  try
   {
     logFile << "=== ZYGISK FF LOG SESSION START ===" << std::endl;
     logFile << "Session started at: " << GetCurrentTimestamp() << std::endl;
     logFile << "=====================================" << std::endl;
+    logFile.flush();
     logFile.close();
+    LOGI("Log file initialized successfully");
+  }
+  catch (...)
+  {
+    LOGE("Failed to write to log file during initialization");
+    logFile.close();
+    g_AutoSaveToFile = false;
   }
 }
 
@@ -73,9 +112,27 @@ void WriteLogToFile(const std::string &timestamp, const std::string &level, cons
     return;
 
   std::ofstream logFile(g_LogFilePath, std::ios::out | std::ios::app);
-  if (logFile.is_open())
+  if (!logFile.is_open())
+  {
+    // Try alternative path if main path fails
+    std::string altPath = "/data/data/com.dts.freefireth/zygisk_ff_logs.txt";
+    logFile.open(altPath, std::ios::out | std::ios::app);
+    if (!logFile.is_open())
+    {
+      return; // Silently fail to avoid spam
+    }
+    g_LogFilePath = altPath; // Update global path
+  }
+
+  try
   {
     logFile << "[" << timestamp << "] [" << level << "] " << message << std::endl;
+    logFile.flush(); // Ensure immediate write
+    logFile.close();
+  }
+  catch (...)
+  {
+    // Silently handle write errors
     logFile.close();
   }
 }
@@ -83,20 +140,56 @@ void WriteLogToFile(const std::string &timestamp, const std::string &level, cons
 // Save all current logs to file
 void SaveLogsToFile()
 {
+  LOGD("Attempting to save logs to file: %s", g_LogFilePath.c_str());
+
   std::ofstream logFile(g_LogFilePath, std::ios::out | std::ios::trunc);
-  if (logFile.is_open())
+  if (!logFile.is_open())
+  {
+    LOGE("Failed to open log file for writing: %s", g_LogFilePath.c_str());
+
+    // Try alternative path
+    std::string altPath = "/data/data/com.dts.freefiremax/zygisk_ff_logs.txt";
+    LOGW("Trying alternative path: %s", altPath.c_str());
+
+    logFile.open(altPath, std::ios::out | std::ios::trunc);
+    if (!logFile.is_open())
+    {
+      LOGE("Failed to open alternative log file path");
+      return;
+    }
+    g_LogFilePath = altPath; // Update path if successful
+    LOGI("Successfully switched to alternative log path");
+  }
+
+  try
   {
     logFile << "=== ZYGISK FF COMPLETE LOG DUMP ===" << std::endl;
     logFile << "Generated at: " << GetCurrentTimestamp() << std::endl;
     logFile << "Total entries: " << g_LogBuffer.size() << std::endl;
     logFile << "====================================" << std::endl;
 
+    size_t written = 0;
     for (const auto &entry : g_LogBuffer)
     {
       logFile << "[" << entry.timestamp << "] [" << entry.level << "] " << entry.message << std::endl;
+      written++;
+
+      // Flush every 100 entries to ensure data is written
+      if (written % 100 == 0)
+      {
+        logFile.flush();
+      }
     }
 
     logFile << "=== END OF LOG DUMP ===" << std::endl;
+    logFile.flush();
+    logFile.close();
+
+    LOGI("Successfully saved %zu log entries to file", written);
+  }
+  catch (const std::exception &e)
+  {
+    LOGE("Exception occurred while writing logs: %s", e.what());
     logFile.close();
   }
 }
@@ -300,10 +393,10 @@ void SetDarkGrayTheme()
   style->ChildRounding = 4.0f;
   style->FrameBorderSize = 1.0f;
   style->FrameRounding = 2.0f;
-  style->GrabMinSize = 7.0f;
+  style->GrabMinSize = 10.0f;
   style->PopupRounding = 2.0f;
   style->ScrollbarRounding = 12.0f;
-  style->ScrollbarSize = 13.0f;
+  style->ScrollbarSize = 20.0f;
   style->TabBorderSize = 1.0f;
   style->TabRounding = 0.0f;
   style->WindowRounding = 4.0f;
@@ -382,9 +475,8 @@ inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
   }
 
   DrawESP(g_GlWidth, g_GlHeight);
-  RenderLogsWindow();                                                                                    // Render logs window
-  ImGui::SetNextWindowSize(ImVec2((float)g_GlWidth * 0.35f, (float)g_GlHeight * 0.60f), ImGuiCond_Once); // Tăng kích thước để có không gian cho tabs
-  // Zygisk Menu // You can Change here
+  RenderLogsWindow();
+  ImGui::SetNextWindowSize(ImVec2((float)g_GlWidth * 0.35f, (float)g_GlHeight * 0.60f), ImGuiCond_Once);
   if (ImGui::Begin(OBFUSCATE("Zygisk by Ngoc [ x32/x64 ]"), 0, ImGuiWindowFlags_NoBringToFrontOnFocus))
   {
 
@@ -452,11 +544,11 @@ inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
           }
           else if (AimWhen == 1)
           {
-            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Mode: Hold to Aim");
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Mode: Hold to Fire");
           }
           else if (AimWhen == 2)
           {
-            ImGui::TextColored(ImVec4(1.0f, 0.0f, 1.0f, 1.0f), "Mode: Toggle Aim");
+            ImGui::TextColored(ImVec4(1.0f, 0.0f, 1.0f, 1.0f), "Mode: Hold to Scope");
           }
 
           ImGui::SliderFloat(OBFUSCATE("FOV Range"), &Fov_Aim, 0.0f, 500.0f, "%.0f");
@@ -472,20 +564,14 @@ inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
       // Settings Tab
       if (ImGui::BeginTabItem(OBFUSCATE("Settings")))
       {
-        ImGui::Spacing();
+        // General Settings
         ImGui::Text("General Settings");
-        ImGui::Separator();
-
-        // Anti-Report Settings
-        ImGui::Spacing();
-        ImGui::Text("Protection Features");
         ImGui::Separator();
 
         if (ImGui::Checkbox(OBFUSCATE("Anti-Report"), &AntiReport))
         {
           if (AntiReport)
           {
-            // Enable anti-report when toggled on
             SetupAntiReport();
           }
         }
@@ -505,20 +591,13 @@ inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         }
 
         ImGui::Spacing();
-        ImGui::Separator();
-
-        // Có thể thêm các settings khác ở đây
-        ImGui::Text("Version: 1.0.0");
-        ImGui::Text("Build: x32/x64");
-        ImGui::Separator();
-
+        ImGui::Text("Version: 1.0.0 | Build: x32/x64");
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: Injected");
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Game: Free Fire");
 
         ImGui::Spacing();
         if (ImGui::Button(OBFUSCATE("Reset All Settings"), ImVec2(-1, 0)))
         {
-          // Reset logic
           ESP_Enable = false;
           ESP_Box = false;
           ESP_Line = false;
@@ -542,16 +621,9 @@ inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
         ImGui::Separator();
 
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Zygisk Module by Ngoc");
-        ImGui::Text("Advanced ESP & Aimbot for Free Fire");
+        ImGui::Text("ESP & Aimbot for Free Fire");
         ImGui::Separator();
 
-        ImGui::Text("Features:");
-        ImGui::BulletText("ESP System with multiple options");
-        ImGui::BulletText("Advanced Aimbot with FOV control");
-        ImGui::BulletText("Zygisk injection for stability");
-        ImGui::BulletText("x32/x64 architecture support");
-
-        ImGui::Separator();
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Use responsibly!");
 
         ImGui::Spacing();
@@ -566,23 +638,30 @@ inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
           g_LogsVisible = true;
         }
 
-        if (ImGui::Button("Test Log Messages", ImVec2(-1, 0)))
-        {
-          LOGD("Test debug message");
-          LOGI("Test info message");
-          LOGW("Test warning message");
-          LOGE("Test error message");
-        }
-
         ImGui::Spacing();
         if (ImGui::Button("Export All Logs", ImVec2(-1, 0)))
         {
           SaveLogsToFile();
-          LOGI("All logs exported to file: %s", g_LogFilePath.c_str());
+          LOGI("Log export completed. Check file: %s", g_LogFilePath.c_str());
+        }
+
+        if (ImGui::Button("Test File Write", ImVec2(-1, 0)))
+        {
+          LOGD("Testing file write capability...");
+          std::ofstream testFile(g_LogFilePath, std::ios::out | std::ios::app);
+          if (testFile.is_open())
+          {
+            testFile << "=== TEST WRITE " << GetCurrentTimestamp() << " ===" << std::endl;
+            testFile.close();
+            LOGI("File write test successful");
+          }
+          else
+          {
+            LOGE("File write test failed - check permissions");
+          }
         }
 
         ImGui::Text("Auto-save to file: %s", g_AutoSaveToFile ? "ON" : "OFF");
-        ImGui::Text("Log file: /sdcard/zygisk_ff_logs.txt");
 
         ImGui::EndTabItem();
       }
