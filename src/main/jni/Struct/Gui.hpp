@@ -18,6 +18,7 @@
 #include "Icon/Icon.h"
 #include "Icon/Iconcpp.h"
 #include "Icon/Font.h"
+#include "../imgui/fonts/Roboto-Regular.h"
 
 #include <Struct/ESP.h>
 
@@ -65,10 +66,21 @@ void SetupImgui()
 
   ImGui_ImplOpenGL3_Init("#version 300 es");
 
-  // We load the default font with increased size to improve readability on many devices with "high" DPI.
   ImFontConfig font_cfg;
   font_cfg.SizePixels = 22.0f;
-  io.Fonts->AddFontDefault(&font_cfg);
+
+  // Try to load Roboto font
+  ImFont *oppo_font = io.Fonts->AddFontFromMemoryTTF(
+      (void *)Roboto_Regular,
+      sizeof(Roboto_Regular),
+      22.0f,
+      &font_cfg,
+      io.Fonts->GetGlyphRangesDefault());
+
+  if (!oppo_font)
+  {
+    io.Fonts->AddFontDefault(&font_cfg);
+  }
 
   // Arbitrary scale-up
   ImGui::GetStyle().ScaleAllSizes(3.0f);

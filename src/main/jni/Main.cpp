@@ -376,9 +376,9 @@ void SetDarkGrayTheme()
   colors[ImGuiCol_ResizeGripActive] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
   colors[ImGuiCol_Tab] = ImVec4(0.098f, 0.098f, 0.098f, 1.000f);
   colors[ImGuiCol_TabHovered] = ImVec4(0.352f, 0.352f, 0.352f, 1.000f);
-  colors[ImGuiCol_TabActive] = ImVec4(0.195f, 0.195f, 0.195f, 1.000f);
+  colors[ImGuiCol_TabActive] = ImVec4(0.300f, 0.300f, 0.300f, 1.000f);
   colors[ImGuiCol_TabUnfocused] = ImVec4(0.098f, 0.098f, 0.098f, 1.000f);
-  colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.195f, 0.195f, 0.195f, 1.000f);
+  colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.220f, 0.220f, 0.220f, 1.000f);
   colors[ImGuiCol_PlotLines] = ImVec4(0.469f, 0.469f, 0.469f, 1.000f);
   colors[ImGuiCol_PlotLinesHovered] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
   colors[ImGuiCol_PlotHistogram] = ImVec4(0.586f, 0.586f, 0.586f, 1.000f);
@@ -398,8 +398,13 @@ void SetDarkGrayTheme()
   style->ScrollbarRounding = 12.0f;
   style->ScrollbarSize = 20.0f;
   style->TabBorderSize = 1.0f;
-  style->TabRounding = 0.0f;
+  style->TabRounding = 4.0f;
   style->WindowRounding = 4.0f;
+
+  // Enhanced tab styling for fixed appearance
+  style->TabMinWidthForCloseButton = 0.0f;
+  style->WindowPadding = ImVec2(8.0f, 8.0f);
+  style->ItemSpacing = ImVec2(8.0f, 4.0f);
 }
 
 //========BYPASS========\\
@@ -479,9 +484,8 @@ inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
   ImGui::SetNextWindowSize(ImVec2((float)g_GlWidth * 0.35f, (float)g_GlHeight * 0.60f), ImGuiCond_Once);
   if (ImGui::Begin(OBFUSCATE("Zygisk by Ngoc [ x32/x64 ]"), 0, ImGuiWindowFlags_NoBringToFrontOnFocus))
   {
-
-    // Tab Bar
-    if (ImGui::BeginTabBar("MainTabs", ImGuiTabBarFlags_None))
+    // Fixed Tab Bar at top
+    if (ImGui::BeginTabBar("MainTabs", ImGuiTabBarFlags_NoCloseWithMiddleMouseButton | ImGuiTabBarFlags_NoTooltip | ImGuiTabBarFlags_FittingPolicyScroll))
     {
       // ESP Tab
       if (ImGui::BeginTabItem(OBFUSCATE("ESP")))
@@ -660,8 +664,6 @@ inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface)
             LOGE("File write test failed - check permissions");
           }
         }
-
-        ImGui::Text("Auto-save to file: %s", g_AutoSaveToFile ? "ON" : "OFF");
 
         ImGui::EndTabItem();
       }

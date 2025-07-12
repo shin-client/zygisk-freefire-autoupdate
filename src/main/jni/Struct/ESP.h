@@ -289,40 +289,36 @@ std::vector<void *> GetAllEnemies()
 {
   std::vector<void *> enemies;
 
-  void *get_MatchGame = Curent_Match();
-  if (get_MatchGame == NULL)
-    return enemies;
-
-  void *LocalPlayer = GetLocalPlayer(get_MatchGame);
-  if (LocalPlayer == NULL)
-    return enemies;
-
-  uintptr_t playersPtr = (uintptr_t)get_MatchGame + ListPlayer;
-  if (playersPtr == 0)
-    return enemies;
-
-  monoDictionary<uint8_t *, void **> *players = *(monoDictionary<uint8_t *, void **> **)playersPtr;
-  if (players == NULL)
-    return enemies;
-
-  int playerCount = players->getNumValues();
-  if (playerCount <= 0)
-    return enemies;
-
-  for (int u = 0; u < playerCount; u++)
+  try
   {
-    if (u >= playerCount)
-      break;
+    void *get_MatchGame = Curent_Match();
+    if (!get_MatchGame)
+      return enemies;
 
-    void *Player = players->getValues()[u];
-    if (Player == NULL || Player == LocalPlayer || get_isLocalTeam(Player) ||
-        get_IsDieing(Player) || !get_MaxHP(Player))
-      continue;
+    void *LocalPlayer = GetLocalPlayer(get_MatchGame);
+    if (!LocalPlayer)
+      return enemies;
 
-    // No FOV check for ESP - show all enemies
-    enemies.push_back(Player);
+    monoDictionary<uint8_t *, void **> *players = *(monoDictionary<uint8_t *, void **> **)((uintptr_t)get_MatchGame + ListPlayer);
+    if (!players)
+      return enemies;
+
+    enemies.reserve(16);
+
+    int playerCount = players->getNumValues();
+    for (int u = 0; u < playerCount; u++)
+    {
+      void *Player = players->getValues()[u];
+      if (Player && Player != LocalPlayer && get_isVisible(Player) && !get_isLocalTeam(Player))
+      {
+        enemies.push_back(Player);
+      }
+    }
   }
-
+  catch (...)
+  {
+    enemies.clear();
+  }
   return enemies;
 }
 
@@ -333,16 +329,14 @@ inline void DrawESP(float screenWidth, float screenHeight)
   if (!draw)
     return;
 
-  // Smart cache cleanup - only when needed
   static int frameCount = 0;
   static auto lastCleanup = std::chrono::steady_clock::now();
 
   if (++frameCount >= 300)
-  { // Every 5 seconds at 60 FPS
+  {
     auto now = std::chrono::steady_clock::now();
     auto timeSinceLastCleanup = std::chrono::duration_cast<std::chrono::seconds>(now - lastCleanup).count();
 
-    // Only cleanup if cache has entries and enough time has passed
     if (!nameCache.empty() && timeSinceLastCleanup >= 5)
     {
       CleanNameCache();
@@ -351,7 +345,6 @@ inline void DrawESP(float screenWidth, float screenHeight)
     frameCount = 0;
   }
 
-  // Get game data once for both aimbot and ESP
   void *CurrentMatch = Curent_Match();
   void *LocalPlayer = nullptr;
 
@@ -360,30 +353,59 @@ inline void DrawESP(float screenWidth, float screenHeight)
     LocalPlayer = GetLocalPlayer(CurrentMatch);
   }
 
-  // Aimbot logic
+  // Aimbot logic with debugging
   if (Aimbot && CurrentMatch != nullptr && LocalPlayer != nullptr)
   {
+    LOGI("Aimbot: Starting aimbot logic");
+
     void *closestEnemy = GetClosestEnemy();
     if (closestEnemy != nullptr)
     {
-      Vector3 EnemyLocation = GetHeadPosition(closestEnemy);
-      Vector3 PlayerLocation = CameraMain(LocalPlayer);
-      Quaternion PlayerLook = GetRotationToLocation(EnemyLocation, 0.1f, PlayerLocation);
-      bool IsScopeOn = get_IsSighting(LocalPlayer);
-      bool IsFiring = get_IsFiring(LocalPlayer);
+      LOGI("Aimbot: Found closest enemy: %p", closestEnemy);
 
-      if (AimWhen == 0)
+      try
       {
-        set_aim(LocalPlayer, PlayerLook);
+        Vector3 EnemyLocation = GetHeadPosition(closestEnemy);
+        LOGI("Aimbot: Enemy head position: %.2f, %.2f, %.2f", EnemyLocation.x, EnemyLocation.y, EnemyLocation.z);
+
+        Vector3 PlayerLocation = CameraMain(LocalPlayer);
+        LOGI("Aimbot: Player camera position: %.2f, %.2f, %.2f", PlayerLocation.x, PlayerLocation.y, PlayerLocation.z);
+
+        Quaternion PlayerLook = GetRotationToLocation(EnemyLocation, 0.1f, PlayerLocation);
+        LOGI("Aimbot: Calculated rotation: %.2f, %.2f, %.2f, %.2f", PlayerLook.x, PlayerLook.y, PlayerLook.z, PlayerLook.w);
+
+        bool IsScopeOn = get_IsSighting(LocalPlayer);
+        bool IsFiring = get_IsFiring(LocalPlayer);
+        LOGI("Aimbot: Scope: %d, Firing: %d, AimWhen: %d", IsScopeOn, IsFiring, AimWhen);
+
+        if (AimWhen == 0)
+        {
+          LOGI("Aimbot: Applying aim (Always)");
+          set_aim(LocalPlayer, PlayerLook);
+        }
+        else if (AimWhen == 1 && IsFiring)
+        {
+          LOGI("Aimbot: Applying aim (When Firing)");
+          set_aim(LocalPlayer, PlayerLook);
+        }
+        else if (AimWhen == 2 && IsScopeOn)
+        {
+          LOGI("Aimbot: Applying aim (When Scoped)");
+          set_aim(LocalPlayer, PlayerLook);
+        }
+        else
+        {
+          LOGI("Aimbot: Conditions not met for aiming");
+        }
       }
-      else if (AimWhen == 1 && IsFiring)
+      catch (...)
       {
-        set_aim(LocalPlayer, PlayerLook);
+        LOGE("Aimbot: Exception in aimbot execution");
       }
-      else if (AimWhen == 2 && IsScopeOn)
-      {
-        set_aim(LocalPlayer, PlayerLook);
-      }
+    }
+    else
+    {
+      LOGI("Aimbot: No closest enemy found");
     }
   }
 
@@ -404,28 +426,27 @@ inline void DrawESP(float screenWidth, float screenHeight)
 
       for (void *enemy : enemies)
       {
-        if (enemy == nullptr)
-          continue;
-
+        // Get positions once and reuse
         Vector3 Toepos = getPosition(enemy);
-        Vector3 Toeposi = WorldToScreenPoint(camera, Vector3(Toepos.x, Toepos.y, Toepos.z));
+        Vector3 Toeposi = WorldToScreenPoint(camera, Toepos);
         if (Toeposi.z < 1)
           continue;
 
-        Vector3 HeadPos = getPosition(enemy) + Vector3(0, 1.9f, 0);
-        Vector3 HeadPosition = WorldToScreenPoint(camera, Vector3(HeadPos.x, HeadPos.y, HeadPos.z));
+        Vector3 HeadPos = Toepos + Vector3(0, 1.9f, 0);
+        Vector3 HeadPosition = WorldToScreenPoint(camera, HeadPos);
         if (HeadPosition.z < 1)
           continue;
 
-        // Check if enemy is within screen bounds for ESP display
-        float distance = Vector3::Distance(getPosition(LocalPlayer), Toepos);
+        // Calculate rect and distance
         float height = abs(HeadPosition.y - Toeposi.y) * 1.2f;
-        float width = height * 0.50f;
-        Rect rect = Rect(HeadPosition.x - width / 2.f, screenHeight - HeadPosition.y, width, height);
+        float width = height * 0.5f;
+        Rect rect = Rect(HeadPosition.x - width * 0.5f, screenHeight - HeadPosition.y, width, height);
 
-        // Skip if rect is completely outside screen bounds
-        if (rect.x + rect.w < 0 || rect.x > screenWidth || rect.y + rect.h < 0 || rect.y > screenHeight)
+        // Quick screen bounds check (simplified)
+        if (rect.x > screenWidth || rect.y > screenHeight || rect.x + rect.w < 0 || rect.y + rect.h < 0)
           continue;
+
+        float distance = Vector3::Distance(getPosition(LocalPlayer), Toepos);
 
         // Line ESP
         if (ESP_Line)
@@ -447,13 +468,12 @@ inline void DrawESP(float screenWidth, float screenHeight)
           float maxHP = get_MaxHP(enemy);
           float currentHP = GetHp(enemy);
 
-          if (maxHP > 0 && currentHP >= 0 && currentHP <= maxHP)
+          if (maxHP > 0 && currentHP > 0 && currentHP <= maxHP)
           {
-            long clr = ImColor(0, 255, 0, 255);
-            if (currentHP <= (maxHP * 0.6))
-              clr = ImColor(255, 255, 0, 255);
-            if (currentHP < (maxHP * 0.3))
-              clr = ImColor(255, 0, 0, 255);
+            // Simplified color logic
+            long clr = (currentHP < maxHP * 0.3f) ? ImColor(255, 0, 0, 255) : (currentHP <= maxHP * 0.6f) ? ImColor(255, 255, 0, 255)
+                                                                                                          : ImColor(0, 255, 0, 255);
+
             if (get_IsDieing(enemy))
               clr = die;
 
@@ -469,26 +489,20 @@ inline void DrawESP(float screenWidth, float screenHeight)
         if (ESP_Name || ESP_Distance)
         {
           std::string displayText;
-
           if (ESP_Distance)
-          {
-            displayText += "[" + int_to_string((int)distance) + "] ";
-          }
-
+            displayText = "[" + int_to_string((int)distance) + "] ";
           if (ESP_Name)
           {
             std::string playerName = GetCachedPlayerName(enemy);
             if (!playerName.empty())
-            {
               displayText += playerName;
-            }
           }
 
           if (!displayText.empty())
           {
             ImVec2 textSize = ImGui::CalcTextSize(displayText.c_str());
             ImColor textColor = get_IsDieing(enemy) ? ImColor(255, 0, 0) : ImColor(255, 255, 0);
-            draw->AddText(ImVec2(rect.x + (rect.w / 2) - (textSize.x / 2), rect.y - textSize.y),
+            draw->AddText(ImVec2(rect.x + (rect.w - textSize.x) * 0.5f, rect.y - textSize.y),
                           textColor, displayText.c_str());
           }
         }
