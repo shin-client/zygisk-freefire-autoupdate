@@ -32,7 +32,7 @@ LOCAL_C_INCLUDES       += $(LOCAL_PATH)/include/Substrate
 FILE_LIST               := $(wildcard $(LOCAL_PATH)/imgui/*.c*)
 FILE_LIST               += $(wildcard $(LOCAL_PATH)/xdl/*.c*)
 FILE_LIST               += $(wildcard $(LOCAL_PATH)/KittyMemory/*.c*)
-FILE_LIST              += $(wildcard $(LOCAL_PATH)/CheatCode/IL2CppSDKGenerator/*.c*)
+FILE_LIST               += $(wildcard $(LOCAL_PATH)/Unity/*.c*)
 FILE_LIST              += $(wildcard $(LOCAL_PATH)/*.c*)
 
 LOCAL_SRC_FILES        := $(FILE_LIST:$(LOCAL_PATH)/%=%)

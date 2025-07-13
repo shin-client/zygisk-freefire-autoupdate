@@ -1,8 +1,9 @@
 #ifndef MONOSTRING_H
 #define MONOSTRING_H
 
-#include <string>
 #include <stdint.h>
+
+#include <string>
 
 #ifdef __GNUC__
 #include <endian.h>
@@ -11,26 +12,23 @@
 using namespace std;
 
 class MonoString {
-    void *klass;
-    void *monitor;
-    int length;
-    char chars[1];
-    char *getChars() {
-        return chars;
-    }
+  void *klass;
+  void *monitor;
+  int   length;
+  char  chars[1];
 
-public:
-    int getLength() {
-        return length;
-    }
-	
-    const char *toChars();
-	
-    string toString();
+  char *getChars() { return chars; }
 
-    void setMonoString(const char *s);
+ public:
+  int getLength() { return length; }
 
-    void setMonoString(string s);
+  const char *toChars();
+
+  string toString();
+
+  void setMonoString(const char *s);
+
+  void setMonoString(string s);
 };
 
 std::string utf16_to_utf8(const std::u16string &u16str);
@@ -43,5 +41,4 @@ std::u16string utf8_to_utf16le(const std::string &u8str, bool addbom = false, bo
 
 std::u16string utf8_to_utf16be(const std::string &u8str, bool addbom = false, bool *ok = NULL);
 
-#endif //MONOSTRING_H
-
+#endif  // MONOSTRING_H
