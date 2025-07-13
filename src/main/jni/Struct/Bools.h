@@ -10,7 +10,7 @@ extern int g_GlWidth, g_GlHeight;
 
 // Aimbot Configuration
 int AimWhen = 1;
-float Fov_Aim = 50.0f;
+float Fov_Aim = 100.0f;
 float Aimdis = 200.0f;
 bool Aimbot = false;
 
