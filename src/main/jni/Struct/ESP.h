@@ -23,6 +23,7 @@
 #include <unordered_map>
 #include <chrono>
 #include <vector>
+#include <mutex>
 
 extern int g_GlWidth, g_GlHeight;
 
@@ -39,6 +40,7 @@ struct CachedName
 
 // Cache for player names to avoid repeated UTF-8 conversion
 static std::unordered_map<void *, CachedName> nameCache;
+static std::mutex nameCacheMutex;
 static const uint64_t CACHE_TIMEOUT_MS = 60 * 1000;
 
 // Optimized name retrieval with caching
@@ -47,55 +49,80 @@ std::string GetCachedPlayerName(void *player)
   if (!player)
     return "";
 
-  auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-                 std::chrono::steady_clock::now().time_since_epoch())
-                 .count();
-
-  // Check if we have cached name
-  auto it = nameCache.find(player);
-  if (it != nameCache.end())
+  try
   {
-    // Check if cache is still valid
-    if (now - it->second.timestamp < CACHE_TIMEOUT_MS)
+    std::lock_guard<std::mutex> lock(nameCacheMutex);
+
+    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+                   std::chrono::steady_clock::now().time_since_epoch())
+                   .count();
+
+    // Check if we have cached name
+    auto it = nameCache.find(player);
+    if (it != nameCache.end())
     {
-      return it->second.name;
+      // Check if cache is still valid
+      if (now - it->second.timestamp < CACHE_TIMEOUT_MS)
+      {
+        return it->second.name;
+      }
     }
+
+    // Get fresh name
+    std::string playerName;
+    try
+    {
+      monoString *Nick = get_NickName(player);
+      if (!Nick)
+        return "";
+
+      int nick_Len = Nick->getLength();
+      if (nick_Len <= 0 || nick_Len >= 1000)
+        return "";
+
+      playerName = get_UTF8_String_Safe(Nick);
+
+      // Cache the result
+      nameCache[player] = {playerName, static_cast<uint64_t>(now), nick_Len};
+    }
+    catch (...)
+    {
+      return "";
+    }
+
+    return playerName;
   }
-
-  // Get fresh name
-  monoString *Nick = get_NickName(player);
-  if (!Nick)
+  catch (...)
+  {
     return "";
-
-  int nick_Len = Nick->getLength();
-  if (nick_Len <= 0 || nick_Len >= 1000)
-    return "";
-
-  std::string playerName = get_UTF8_String_Safe(Nick);
-
-  // Cache the result
-  nameCache[player] = {playerName, static_cast<uint64_t>(now), nick_Len};
-
-  return playerName;
+  }
 }
 
 // Clean expired cache entries (call periodically)
 void CleanNameCache()
 {
-  auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-                 std::chrono::steady_clock::now().time_since_epoch())
-                 .count();
-
-  for (auto it = nameCache.begin(); it != nameCache.end();)
+  try
   {
-    if (now - it->second.timestamp > CACHE_TIMEOUT_MS)
+    std::lock_guard<std::mutex> lock(nameCacheMutex);
+
+    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+                   std::chrono::steady_clock::now().time_since_epoch())
+                   .count();
+
+    for (auto it = nameCache.begin(); it != nameCache.end();)
     {
-      it = nameCache.erase(it);
+      if (now - it->second.timestamp > CACHE_TIMEOUT_MS)
+      {
+        it = nameCache.erase(it);
+      }
+      else
+      {
+        ++it;
+      }
     }
-    else
-    {
-      ++it;
-    }
+  }
+  catch (...)
+  {
   }
 }
 
@@ -167,124 +194,57 @@ void DrawCircleHealth(ImVec2 position, int health, int max_health, float radius)
 // Visibility check
 bool IsVisible(void *player)
 {
-  if (player == NULL)
-    return false;
-
-  void *hitObj = NULL;
-  Vector3 cameraLocation = Transform_GetPosition(Component_GetTransform(Camera_main()));
-  Vector3 headLocation = Transform_GetPosition(Component_GetTransform(Player_GetHeadCollider(player)));
-  return !Physics_Raycast(cameraLocation, headLocation, 12, &hitObj);
+  if (player != NULL)
+  {
+    void *hitObj = NULL;
+    Vector3 cameraLocation = Transform_GetPosition(Component_GetTransform(Camera_main()));
+    Vector3 headLocation = Transform_GetPosition(Component_GetTransform(Player_GetHeadCollider(player)));
+    return !Physics_Raycast(cameraLocation, headLocation, 12, &hitObj);
+  }
+  return false;
 }
 
 // Health display
 void DrawHealths(Rect box, float entityHealth, float maxHealth, int TeamID, const char *name, long color)
 {
-  if (name == NULL || maxHealth <= 0)
+  if (!name || maxHealth <= 0)
     return;
 
-  float x = box.x - (140 - box.w) / 2;
+  float x = box.x - (140 - box.w) * 0.5f;
   float y = box.y;
 
-  char TeamText[32];
-  snprintf(TeamText, sizeof(TeamText), "%d", (int)TeamID);
-
-  ImVec4 HPColor = ImVec4{1, 1, 0, 127 / 255.f};
-
-  if (entityHealth < maxHealth)
-  {
-    float healthPercentage = entityHealth / maxHealth;
-    if (healthPercentage < 0.3f)
-      HPColor = ImVec4{0.5f, 0.0f, 0.0f, 127 / 255.f};
-    else if (healthPercentage < 0.6f)
-      HPColor = ImVec4{1, 0, 0, 127 / 255.f};
-  }
-
+  // Cache string length and create TeamText
   int nameLen = strlen(name);
+  char TeamText[8];
+  snprintf(TeamText, sizeof(TeamText), "%d", TeamID);
+
+  // Simplified health color calculation
+  float healthRatio = entityHealth / maxHealth;
+  ImVec4 HPColor = (healthRatio < 0.3f) ? ImVec4{0.5f, 0.0f, 0.0f, 0.5f} : (healthRatio < 0.6f) ? ImVec4{1.0f, 0.0f, 0.0f, 0.5f}
+                                                                                                : ImVec4{1.0f, 1.0f, 0.0f, 0.5f};
+
+  // Draw background rectangles
   DrawRectFilled(x - nameLen, y - 41, 120 + nameLen * 2, 20, color);
-  DrawRectFilled(x - nameLen, box.y - 41, 25, 20, color);
+  DrawRectFilled(x - nameLen, y - 41, 25, 20, color);
 
-  if (strlen(TeamText) < 2)
-  {
-    drawText2(x + 6 - nameLen, box.y - 42, ImColor(255, 255, 255), TeamText, 18.943);
-  }
-  else
-  {
-    drawText2(x - nameLen, box.y - 42, ImColor(255, 255, 255), TeamText, 18.943);
-  }
+  // Draw team text
+  int teamTextX = (strlen(TeamText) < 2) ? x + 6 - nameLen : x - nameLen;
+  drawText2(teamTextX, y - 42, ImColor(255, 255, 255), TeamText, 18.943f);
 
-  drawText2(x + 28 - nameLen, y - 43, ImColor(255, 255, 255), name, 18.943);
+  // Draw player name
+  drawText2(x + 28 - nameLen, y - 43, ImColor(255, 255, 255), name, 18.943f);
 
-  float maxWidth = 120;
-  float healthBarWidth = (entityHealth * maxWidth / maxHealth);
-  DrawRectFilledHealth(x - maxWidth / 2, y - 18, healthBarWidth, 8, HPColor);
+  // Draw health bar
+  const float maxWidth = 120.0f;
+  float healthBarWidth = entityHealth * maxWidth / maxHealth;
+  DrawRectFilledHealth(x - maxWidth * 0.5f, y - 18, healthBarWidth, 8, HPColor);
 
-  DrawTriangle(box.x + box.w / 2 - 10, y - 8, box.x + box.w / 2 + 15 - 10, y - 8,
-               box.x + box.w / 2 - 2, y, ImColor(255, 255, 255), 1);
+  // Draw triangle
+  float centerX = box.x + box.w * 0.5f;
+  DrawTriangle(centerX - 10, y - 8, centerX + 5, y - 8, centerX - 2, y, ImColor(255, 255, 255), 1);
 }
 
-// Get closest enemy for aimbot (with FOV restriction)
-void *GetClosestEnemy()
-{
-  float shortestDistance = 9999;
-  void *closestEnemy = NULL;
-  void *get_MatchGame = Curent_Match();
-  void *LocalPlayer = GetLocalPlayer(get_MatchGame);
-
-  if (get_MatchGame == NULL)
-    return NULL;
-
-  if (LocalPlayer == NULL)
-    return NULL;
-
-  uintptr_t playersPtr = (uintptr_t)get_MatchGame + ListPlayer;
-  if (playersPtr == 0)
-    return NULL;
-
-  monoDictionary<uint8_t *, void **> *players = *(monoDictionary<uint8_t *, void **> **)playersPtr;
-  if (players == NULL)
-    return NULL;
-
-  int playerCount = players->getNumValues();
-  if (playerCount <= 0)
-    return NULL;
-
-  for (int u = 0; u < playerCount; u++)
-  {
-    if (u >= playerCount)
-      break;
-
-    void *Player = players->getValues()[u];
-    if (Player == NULL || Player == LocalPlayer || get_isLocalTeam(Player) ||
-        get_IsDieing(Player) || !get_isVisible(Player) || !get_MaxHP(Player))
-      continue;
-
-    Vector3 PlayerPos = getPosition(Player);
-    Vector3 LocalPlayerPos = getPosition(LocalPlayer);
-    Vector3 pos2 = WorldToScreenPoint(Camera_main(), PlayerPos);
-
-    float distance = Vector3::Distance(LocalPlayerPos, PlayerPos);
-    if (distance >= Aimdis)
-      continue;
-
-    // FOV check for aimbot only
-    bool isFov1 = isFov(Vector3(pos2.x, pos2.y), Vector3(g_GlWidth / 2, g_GlHeight / 2), Fov_Aim);
-    if (!isFov1)
-      continue;
-
-    Vector3 targetDir = Vector3::Normalized(PlayerPos - LocalPlayerPos);
-    float angle = Vector3::Angle(targetDir, GetForward(Component_GetTransform(Camera_main()))) * 100.0;
-
-    if (angle <= Fov_Aim && angle < shortestDistance)
-    {
-      shortestDistance = angle;
-      closestEnemy = Player;
-    }
-  }
-
-  return closestEnemy;
-}
-
-// Get all enemies for ESP (no FOV restriction)
+// Get all enemies
 std::vector<void *> GetAllEnemies()
 {
   std::vector<void *> enemies;
@@ -322,6 +282,67 @@ std::vector<void *> GetAllEnemies()
   return enemies;
 }
 
+// Get closest enemy for aimbot
+void *GetClosestEnemy()
+{
+  float minAngle = 9999;
+  float minDistance = 99999;
+  void *closestEnemy = NULL;
+
+  try
+  {
+    void *get_MatchGame = Curent_Match();
+    if (!get_MatchGame)
+      return NULL;
+
+    void *LocalPlayer = GetLocalPlayer(get_MatchGame);
+    if (!LocalPlayer)
+      return NULL;
+
+    std::vector<void *> enemies = GetAllEnemies();
+    for (void *Player : enemies)
+    {
+      if (!Player || Player == LocalPlayer || get_IsDieing(Player))
+        continue;
+      try
+      {
+        Vector3 PlayerPos = getPosition(Player);
+        Vector3 LocalPlayerPos = getPosition(LocalPlayer);
+        float distance = Vector3::Distance(LocalPlayerPos, PlayerPos);
+        if (distance >= Aimdis)
+          continue;
+
+        // Quick screen check
+        Vector3 pos2 = WorldToScreenPoint(Camera_main(), PlayerPos);
+        if (!isFov(Vector3(pos2.x, pos2.y), Vector3(g_GlWidth / 2, g_GlHeight / 2), Fov_Aim))
+          continue;
+
+        // Simple angle calculation
+        Vector3 targetDir = Vector3::Normalized(PlayerPos - LocalPlayerPos);
+        float angle = Vector3::Angle(targetDir, GetForward(Component_GetTransform(Camera_main()))) * 100.0f;
+        if (angle <= Fov_Aim)
+        {
+          if ((fabs(angle - minAngle) < 1e-3 && distance < minDistance) || angle < minAngle)
+          {
+            minAngle = angle;
+            minDistance = distance;
+            closestEnemy = Player;
+          }
+        }
+      }
+      catch (...)
+      {
+      }
+    }
+  }
+  catch (...)
+  {
+    return NULL;
+  }
+
+  return closestEnemy;
+}
+
 // Main ESP and Aimbot function
 inline void DrawESP(float screenWidth, float screenHeight)
 {
@@ -353,59 +374,36 @@ inline void DrawESP(float screenWidth, float screenHeight)
     LocalPlayer = GetLocalPlayer(CurrentMatch);
   }
 
-  // Aimbot logic with debugging
+  // Aimbot logic
   if (Aimbot && CurrentMatch != nullptr && LocalPlayer != nullptr)
   {
-    LOGI("Aimbot: Starting aimbot logic");
-
     void *closestEnemy = GetClosestEnemy();
     if (closestEnemy != nullptr)
     {
-      LOGI("Aimbot: Found closest enemy: %p", closestEnemy);
-
       try
       {
         Vector3 EnemyLocation = GetHeadPosition(closestEnemy);
-        LOGI("Aimbot: Enemy head position: %.2f, %.2f, %.2f", EnemyLocation.x, EnemyLocation.y, EnemyLocation.z);
-
         Vector3 PlayerLocation = CameraMain(LocalPlayer);
-        LOGI("Aimbot: Player camera position: %.2f, %.2f, %.2f", PlayerLocation.x, PlayerLocation.y, PlayerLocation.z);
-
         Quaternion PlayerLook = GetRotationToLocation(EnemyLocation, 0.1f, PlayerLocation);
-        LOGI("Aimbot: Calculated rotation: %.2f, %.2f, %.2f, %.2f", PlayerLook.x, PlayerLook.y, PlayerLook.z, PlayerLook.w);
-
         bool IsScopeOn = get_IsSighting(LocalPlayer);
         bool IsFiring = get_IsFiring(LocalPlayer);
-        LOGI("Aimbot: Scope: %d, Firing: %d, AimWhen: %d", IsScopeOn, IsFiring, AimWhen);
 
         if (AimWhen == 0)
         {
-          LOGI("Aimbot: Applying aim (Always)");
           set_aim(LocalPlayer, PlayerLook);
         }
         else if (AimWhen == 1 && IsFiring)
         {
-          LOGI("Aimbot: Applying aim (When Firing)");
           set_aim(LocalPlayer, PlayerLook);
         }
         else if (AimWhen == 2 && IsScopeOn)
         {
-          LOGI("Aimbot: Applying aim (When Scoped)");
           set_aim(LocalPlayer, PlayerLook);
-        }
-        else
-        {
-          LOGI("Aimbot: Conditions not met for aiming");
         }
       }
       catch (...)
       {
-        LOGE("Aimbot: Exception in aimbot execution");
       }
-    }
-    else
-    {
-      LOGI("Aimbot: No closest enemy found");
     }
   }
 
