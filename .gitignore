@@ -7,7 +7,6 @@ src/main/libs/
 *.o
 
 # IDE files
-.clang-format
 .vscode/
 .idea/
 *.iml
