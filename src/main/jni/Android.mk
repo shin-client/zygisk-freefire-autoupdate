@@ -31,6 +31,7 @@ LOCAL_C_INCLUDES       += $(LOCAL_PATH)/include/Substrate
 
 FILE_LIST               := $(wildcard $(LOCAL_PATH)/imgui/*.c*)
 FILE_LIST               += $(wildcard $(LOCAL_PATH)/xdl/*.c*)
+FILE_LIST               += $(wildcard $(LOCAL_PATH)/Struct/*.c*)
 FILE_LIST               += $(wildcard $(LOCAL_PATH)/KittyMemory/*.c*)
 FILE_LIST               += $(wildcard $(LOCAL_PATH)/Unity/*.c*)
 FILE_LIST              += $(wildcard $(LOCAL_PATH)/*.c*)

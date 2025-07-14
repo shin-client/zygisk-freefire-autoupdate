@@ -1,8 +1,9 @@
+#include "Struct/main.h"
+
 #include <CydiaSubstrate.h>
 #include <Il2Cpp.h>
 #include <KittyMemory.h>
 #include <KittyUtils.h>
-#include <Struct/main.h>
 #include <SubstrateHook.h>
 #include <android/log.h>
 #include <unistd.h>
@@ -17,19 +18,18 @@
 #include <thread>
 #include <vector>
 
-#include "ImGui/Toggle.h"
 #include "Struct/Class.h"
 #include "Struct/Gui.hpp"
 #include "Struct/obfuscate.h"
-#include "fonts/FontAwesome6_solid.h"
+#include "imgui/Toggle.h"
+#include "imgui/fonts/FontAwesome6_solid.h"
 #include "zygisk.hpp"
 
 using zygisk::Api;
 using zygisk::AppSpecializeArgs;
 using zygisk::ServerSpecializeArgs;
 
-int g_GlWidth, g_GlHeight;
-
+// int g_GlWidth, g_GlHeight;
 std::vector<LogEntry> g_LogBuffer;
 bool                  g_AutoScroll     = true;
 bool                  g_LogsVisible    = false;
@@ -37,7 +37,6 @@ bool                  g_AutoSaveToFile = true;
 std::string           g_LogFilePath    = "/sdcard/zygisk_ff_logs.txt";
 const int             MAX_LOG_ENTRIES  = 1000;
 
-// Function to get current timestamp
 std::string GetCurrentTimestamp() {
   auto now    = std::chrono::system_clock::now();
   auto time_t = std::chrono::system_clock::to_time_t(now);
@@ -49,7 +48,6 @@ std::string GetCurrentTimestamp() {
   return ss.str();
 }
 
-// Initialize log file
 void InitLogFile() {
   if (!g_AutoSaveToFile) return;
 
@@ -93,7 +91,6 @@ void InitLogFile() {
   }
 }
 
-// Write single log entry to file
 void WriteLogToFile(const std::string &timestamp, const std::string &level, const std::string &message) {
   if (!g_AutoSaveToFile) return;
 
@@ -118,7 +115,6 @@ void WriteLogToFile(const std::string &timestamp, const std::string &level, cons
   }
 }
 
-// Save all current logs to file
 void SaveLogsToFile() {
   LOGD("Attempting to save logs to file: %s", g_LogFilePath.c_str());
 
@@ -167,7 +163,6 @@ void SaveLogsToFile() {
   }
 }
 
-// Function to add log entry
 void AddLog(const char *level, const char *fmt, ...) {
   char    buffer[1024];
   va_list args;
@@ -202,7 +197,6 @@ void AddLog(const char *level, const char *fmt, ...) {
   }
 }
 
-// Function to render logs window
 void RenderLogsWindow() {
   if (!g_LogsVisible) return;
 
@@ -259,6 +253,7 @@ class MyModule : public zygisk::ModuleBase {
     this->env_ = env;
     genv       = env;
   }
+
   void preAppSpecialize(AppSpecializeArgs *args) override {
     static constexpr const char *packages[] = {"com.dts.freefiremax", "com.dts.freefireth"};  // Game Package Names
     const char                  *process    = env_->GetStringUTFChars(args->nice_name, nullptr);
@@ -270,6 +265,7 @@ class MyModule : public zygisk::ModuleBase {
     }
     env_->ReleaseStringUTFChars(args->nice_name, process);
   }
+
   void postAppSpecialize(const AppSpecializeArgs *args) override {
     if (is_game_) {
       genv->GetJavaVM(&jvm);
@@ -375,11 +371,11 @@ void SetDarkGrayTheme() {
 // ========================= \\
 
 uintptr_t il2cpp_base = 0;
-void     *getRealAddr(ulong offset) {
-  return reinterpret_cast<void *>(il2cpp_base + offset);
-};
+
+void *getRealAddr(ulong offset) { return reinterpret_cast<void *>(il2cpp_base + offset); };
 
 inline EGLBoolean (*old_eglSwapBuffers)(EGLDisplay dpy, EGLSurface surface);
+
 inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface) {
   eglQuerySurface(dpy, surface, EGL_WIDTH, &g_GlWidth);
   eglQuerySurface(dpy, surface, EGL_HEIGHT, &g_GlHeight);
@@ -424,167 +420,128 @@ inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface) {
   RenderLogsWindow();
   ImGui::SetNextWindowSize(ImVec2((float)g_GlWidth * 0.35f, (float)g_GlHeight * 0.60f), ImGuiCond_Once);
   if (ImGui::Begin(OBFUSCATE("Zygisk by Ngoc [ x32/x64 ]"), 0, ImGuiWindowFlags_NoBringToFrontOnFocus)) {
-    // Fixed Tab Bar at top
-    if (ImGui::BeginTabBar("MainTabs", ImGuiTabBarFlags_NoCloseWithMiddleMouseButton | ImGuiTabBarFlags_NoTooltip |
-                                           ImGuiTabBarFlags_FittingPolicyScroll)) {
-      // ESP Tab
-      if (ImGui::BeginTabItem(OBFUSCATE("ESP"))) {
-        ImGui::Spacing();
-        ImGui::Text("ESP Features");
-        ImGui::Separator();
+    static int currentMenu = 0;
 
-        Toggle(OBFUSCATE("Enable ESP"), &ESP_Enable);
-        Toggle(OBFUSCATE("Box ESP"), &ESP_Box);
-        Toggle(OBFUSCATE("Line ESP"), &ESP_Line);
-        Toggle(OBFUSCATE("Health ESP"), &ESP_Health);
-        Toggle(OBFUSCATE("Name ESP"), &ESP_Name);
-        Toggle(OBFUSCATE("Distance ESP"), &ESP_Distance);
-        Toggle(OBFUSCATE("FOV Circle"), &ESP_FOVCircle);
-
-        ImGui::Spacing();
-        ImGui::Separator();
-
-        ImGui::Spacing();
-        if (ImGui::Button(OBFUSCATE("Enable All ESP"), ImVec2(-1, 0))) {
-          ESP_Enable    = true;
-          ESP_Box       = true;
-          ESP_Line      = true;
-          ESP_Health    = true;
-          ESP_Name      = true;
-          ESP_Distance  = true;
-          ESP_FOVCircle = true;
-        }
-        if (ImGui::Button(OBFUSCATE("Disable All ESP"), ImVec2(-1, 0))) {
-          ESP_Enable    = false;
-          ESP_Box       = false;
-          ESP_Line      = false;
-          ESP_Health    = false;
-          ESP_Name      = false;
-          ESP_Distance  = false;
-          ESP_FOVCircle = false;
-        }
-
-        ImGui::EndTabItem();
-      }
-
-      // Aimbot Tab
-      if (ImGui::BeginTabItem(OBFUSCATE("Aimbot"))) {
-        ImGui::Spacing();
-        Toggle("Enable AimBot Head", &Aimbot);
-        ImGui::Separator();
-
-        if (Aimbot) {
-          ImGui::Text("Aim Settings:");
-          ImGui::Combo("##AimDir", &AimWhen, dir, IM_ARRAYSIZE(dir));
-
-          if (AimWhen == 0) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Mode: Auto Aim");
-          } else if (AimWhen == 1) {
-            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Mode: Hold to Fire");
-          } else if (AimWhen == 2) {
-            ImGui::TextColored(ImVec4(1.0f, 0.0f, 1.0f, 1.0f), "Mode: Hold to Scope");
-          }
-
-          ImGui::SliderFloat(OBFUSCATE("FOV Range"), &Fov_Aim, 0.0f, 500.0f, "%.0f");
-          ImGui::SliderFloat(OBFUSCATE("Max Distance"), &Aimdis, 0.0f, 1000.0f, "%.0f");
-        } else {
-          ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Enable Aimbot to configure settings");
-        }
-        ImGui::EndTabItem();
-      }
-
-      // Settings Tab
-      if (ImGui::BeginTabItem(OBFUSCATE("Settings"))) {
-        // General Settings
-        ImGui::Text("General Settings");
-        ImGui::Separator();
-
-        if (ImGui::Checkbox(OBFUSCATE("Anti-Report"), &AntiReport)) {
-          if (AntiReport) {
-            SetupAntiReport();
-          }
-        }
-        ImGui::SameLine();
-        if (ImGui::Button(OBFUSCATE("?"))) {
-          ImGui::OpenPopup(OBFUSCATE("Anti-Report Help"));
-        }
-
-        if (ImGui::BeginPopup(OBFUSCATE("Anti-Report Help"))) {
-          ImGui::Text("Anti-Report blocks other players from reporting you.");
-          ImGui::Text("This helps protect your account from reports.");
-          ImGui::Separator();
-          ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Use responsibly!");
-          ImGui::EndPopup();
-        }
-
-        ImGui::Spacing();
-        ImGui::Text("Version: 1.0.0 | Build: x32/x64");
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: Injected");
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Game: Free Fire");
-
-        ImGui::Spacing();
-        if (ImGui::Button(OBFUSCATE("Reset All Settings"), ImVec2(-1, 0))) {
-          ESP_Enable    = false;
-          ESP_Box       = false;
-          ESP_Line      = false;
-          ESP_Health    = false;
-          ESP_Name      = false;
-          ESP_Distance  = false;
-          ESP_FOVCircle = false;
-          Aimbot        = false;
-          Fov_Aim       = 50.0f;
-          Aimdis        = 200.0f;
-          AntiReport    = false;
-        }
-        ImGui::EndTabItem();
-      }
-
-      // Info Tab
-      if (ImGui::BeginTabItem(OBFUSCATE("Info"))) {
-        ImGui::Spacing();
-        ImGui::Text("About");
-        ImGui::Separator();
-
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Zygisk Module by Ngoc");
-        ImGui::Text("ESP & Aimbot for Free Fire");
-        ImGui::Separator();
-
-        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Use responsibly!");
-
-        ImGui::Spacing();
-        ImGui::Separator();
-
-        // Debug Controls
-        ImGui::Text("Debug Options");
-        ImGui::Separator();
-
-        if (ImGui::Button("Show Debug Logs", ImVec2(-1, 0))) {
-          g_LogsVisible = true;
-        }
-
-        ImGui::Spacing();
-        if (ImGui::Button("Export All Logs", ImVec2(-1, 0))) {
-          SaveLogsToFile();
-          LOGI("Log export completed. Check file: %s", g_LogFilePath.c_str());
-        }
-
-        if (ImGui::Button("Test File Write", ImVec2(-1, 0))) {
-          LOGD("Testing file write capability...");
-          std::ofstream testFile(g_LogFilePath, std::ios::out | std::ios::app);
-          if (testFile.is_open()) {
-            testFile << "=== TEST WRITE " << GetCurrentTimestamp() << " ===" << std::endl;
-            testFile.close();
-            LOGI("File write test successful");
-          } else {
-            LOGE("File write test failed - check permissions");
-          }
-        }
-
-        ImGui::EndTabItem();
-      }
-
-      ImGui::EndTabBar();
+    // Sidebar
+    ImGui::BeginChild("Sidebar", ImVec2(150, 0), true);
+    {
+      if (ImGui::Selectable(OBFUSCATE("ESP"), currentMenu == 0)) currentMenu = 0;
+      if (ImGui::Selectable(OBFUSCATE("Aimbot"), currentMenu == 1)) currentMenu = 1;
+      if (ImGui::Selectable(OBFUSCATE("Settings"), currentMenu == 2)) currentMenu = 2;
+      if (ImGui::Selectable(OBFUSCATE("Info"), currentMenu == 3)) currentMenu = 3;
     }
+    ImGui::EndChild();
+
+    ImGui::SameLine();
+
+    // Content
+    ImGui::BeginChild("Content", ImVec2(0, 0), true);
+    {
+      switch (currentMenu) {
+        case 0: {
+          ImGui::Spacing();
+          ImGui::Text("ESP Features");
+          ImGui::Separator();
+
+          Toggle(OBFUSCATE("Enable ESP"), &g_ESPConfig->ESP_Enable);
+          Toggle(OBFUSCATE("Box ESP"), &g_ESPConfig->ESP_Box);
+          Toggle(OBFUSCATE("Line ESP"), &g_ESPConfig->ESP_Line);
+          Toggle(OBFUSCATE("Health ESP"), &g_ESPConfig->ESP_Health);
+          Toggle(OBFUSCATE("Name ESP"), &g_ESPConfig->ESP_Name);
+          Toggle(OBFUSCATE("Distance ESP"), &g_ESPConfig->ESP_Distance);
+
+          ImGui::Spacing();
+          ImGui::Separator();
+
+          ImGui::Spacing();
+          if (ImGui::Button(OBFUSCATE("Enable All ESP"), ImVec2(-1, 0))) {
+            g_ESPConfig->enableAll();
+          }
+          if (ImGui::Button(OBFUSCATE("Disable All ESP"), ImVec2(-1, 0))) {
+            g_ESPConfig->disableAll();
+          }
+          break;
+        }
+        case 1: {
+          ImGui::Spacing();
+          Toggle("Enable AimBot Head", &g_AimbotConfig->Aimbot);
+          ImGui::Separator();
+
+          if (g_AimbotConfig->Aimbot) {
+            ImGui::Text("Aim Settings:");
+            ImGui::Combo("##AimDir", &g_AimbotConfig->AimWhen, dir, DIR_COUNT);
+
+            if (g_AimbotConfig->AimWhen == 0) {
+              ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Mode: Auto Aim");
+            } else if (g_AimbotConfig->AimWhen == 1) {
+              ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Mode: Hold to Fire");
+            } else if (g_AimbotConfig->AimWhen == 2) {
+              ImGui::TextColored(ImVec4(1.0f, 0.0f, 1.0f, 1.0f), "Mode: Hold to Scope");
+            }
+
+            ImGui::SliderFloat(OBFUSCATE("FOV Range"), &g_AimbotConfig->Fov_Aim, 0.0f, 500.0f, "%.0f");
+            ImGui::SliderFloat(OBFUSCATE("Max Distance"), &g_AimbotConfig->Aimdis, 0.0f, 1000.0f, "%.0f");
+          } else {
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Enable Aimbot to configure settings");
+          }
+          break;
+        }
+        case 2: {
+          ImGui::Text("General Settings");
+          ImGui::Separator();
+
+          if (ImGui::Checkbox(OBFUSCATE("Anti-Report"), &g_OtherConfig->AntiReport)) {
+            if (g_OtherConfig->AntiReport) {
+              SetupAntiReport();
+            }
+          }
+
+          if (ImGui::Button(OBFUSCATE("Reset Guest"))) {
+            Call_ResetGuest();
+          }
+
+          ImGui::Spacing();
+          ImGui::Text("Version: 1.0.0 | Build: x32/x64");
+          ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: Injected");
+          ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Game: Free Fire");
+
+          ImGui::Spacing();
+          if (ImGui::Button(OBFUSCATE("Reset All Settings"), ImVec2(-1, 0))) {
+            g_OtherConfig->resetAll();
+          }
+          break;
+        }
+        case 3: {
+          ImGui::Spacing();
+          ImGui::Text("About");
+          ImGui::Separator();
+
+          ImGui::TextColored(ImVec4(0.0f, 1.0f, 1.0f, 1.0f), "Zygisk Module by Ngoc");
+          ImGui::Text("ESP & Aimbot for Free Fire");
+          ImGui::Separator();
+
+          ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Use responsibly!");
+
+          ImGui::Spacing();
+          ImGui::Separator();
+
+          ImGui::Text("Debug Options");
+          ImGui::Separator();
+
+          if (ImGui::Button("Show Debug Logs", ImVec2(-1, 0))) {
+            g_LogsVisible = true;
+          }
+
+          ImGui::Spacing();
+          if (ImGui::Button("Export All Logs", ImVec2(-1, 0))) {
+            SaveLogsToFile();
+            LOGI("Log export completed. Check file: %s", g_LogFilePath.c_str());
+          }
+          break;
+        }
+      }
+    }
+    ImGui::EndChild();
   }
 
   ImGui::End();

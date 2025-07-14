@@ -17,8 +17,6 @@
 #include "Unity/unity.h"
 #include "obfuscate.h"
 
-extern int g_GlWidth, g_GlHeight;
-
 // ============================================================================
 // ESP OPTIMIZATION - NAME CACHING SYSTEM
 // ============================================================================
@@ -247,16 +245,16 @@ void *GetClosestEnemy() {
         Vector3 PlayerPos      = getPosition(Player);
         Vector3 LocalPlayerPos = getPosition(LocalPlayer);
         float   distance       = Vector3::Distance(LocalPlayerPos, PlayerPos);
-        if (distance >= Aimdis) continue;
+        if (distance >= g_AimbotConfig->Aimdis) continue;
 
         // Quick screen check
         Vector3 pos2 = WorldToScreenPoint(Camera_main(), PlayerPos);
-        if (!isFov(Vector3(pos2.x, pos2.y), Vector3(g_GlWidth / 2, g_GlHeight / 2), Fov_Aim)) continue;
+        if (!isFov(Vector3(pos2.x, pos2.y), Vector3(g_GlWidth / 2, g_GlHeight / 2), g_AimbotConfig->Fov_Aim)) continue;
 
         // Simple angle calculation
         Vector3 targetDir = Vector3::Normalized(PlayerPos - LocalPlayerPos);
         float   angle     = Vector3::Angle(targetDir, GetForward(Component_GetTransform(Camera_main()))) * 100.0f;
-        if (angle <= Fov_Aim) {
+        if (angle <= g_AimbotConfig->Fov_Aim) {
           if ((fabs(angle - minAngle) < 1e-3 && distance < minDistance) || angle < minAngle) {
             minAngle     = angle;
             minDistance  = distance;
@@ -300,7 +298,7 @@ inline void DrawESP(float screenWidth, float screenHeight) {
   }
 
   // Aimbot logic
-  if (Aimbot && CurrentMatch != nullptr && LocalPlayer != nullptr) {
+  if (g_AimbotConfig->Aimbot && CurrentMatch != nullptr && LocalPlayer != nullptr) {
     void *closestEnemy = GetClosestEnemy();
     if (closestEnemy != nullptr) {
       try {
@@ -310,11 +308,11 @@ inline void DrawESP(float screenWidth, float screenHeight) {
         bool       IsScopeOn      = get_IsSighting(LocalPlayer);
         bool       IsFiring       = get_IsFiring(LocalPlayer);
 
-        if (AimWhen == 0) {
+        if (g_AimbotConfig->AimWhen == 0) {
           set_aim(LocalPlayer, PlayerLook);
-        } else if (AimWhen == 1 && IsFiring) {
+        } else if (g_AimbotConfig->AimWhen == 1 && IsFiring) {
           set_aim(LocalPlayer, PlayerLook);
-        } else if (AimWhen == 2 && IsScopeOn) {
+        } else if (g_AimbotConfig->AimWhen == 2 && IsScopeOn) {
           set_aim(LocalPlayer, PlayerLook);
         }
       } catch (...) {
@@ -323,15 +321,16 @@ inline void DrawESP(float screenWidth, float screenHeight) {
   }
 
   // ESP logic
-  if (ESP_Enable && CurrentMatch != nullptr && LocalPlayer != nullptr) {
+  if (g_ESPConfig->ESP_Enable && CurrentMatch != nullptr && LocalPlayer != nullptr) {
     void *camera = Camera_main();
     if (camera != nullptr) {
       // Get all enemies for ESP (no FOV restriction)
       std::vector<void *> enemies = GetAllEnemies();
 
       // ESP_FOVCircle
-      if (ESP_FOVCircle && Aimbot) {
-        draw->AddCircle(ImVec2(screenWidth / 2, screenHeight / 2), Fov_Aim, ImColor(255, 255, 255), 0, 1.5f);
+      if (g_AimbotConfig->Aimbot) {
+        draw->AddCircle(ImVec2(screenWidth / 2, screenHeight / 2), g_AimbotConfig->Fov_Aim, ImColor(255, 255, 255), 0,
+                        1.5f);
       }
 
       for (void *enemy : enemies) {
@@ -355,19 +354,19 @@ inline void DrawESP(float screenWidth, float screenHeight) {
         float distance = Vector3::Distance(getPosition(LocalPlayer), Toepos);
 
         // Line ESP
-        if (ESP_Line) {
+        if (g_ESPConfig->ESP_Line) {
           draw->AddLine(ImVec2(screenWidth / 2, 80), ImVec2(rect.x + rect.w / 2, rect.y + rect.h / 35),
                         ImColor(255, 255, 255), 1.7);
         }
 
         // Box ESP
-        if (ESP_Box) {
+        if (g_ESPConfig->ESP_Box) {
           draw->AddRect(ImVec2(rect.x, rect.y), ImVec2(rect.x + rect.w, rect.y + rect.h), ImColor(255, 255, 255),
                         visual_esp_box, 0, visual_esp_boxth);
         }
 
         // Health ESP
-        if (ESP_Health) {
+        if (g_ESPConfig->ESP_Health) {
           float maxHP     = get_MaxHP(enemy);
           float currentHP = GetHp(enemy);
 
@@ -388,10 +387,10 @@ inline void DrawESP(float screenWidth, float screenHeight) {
         }
 
         // Name and Distance ESP
-        if (ESP_Name || ESP_Distance) {
+        if (g_ESPConfig->ESP_Name || g_ESPConfig->ESP_Distance) {
           std::string displayText;
-          if (ESP_Distance) displayText = "[" + int_to_string((int)distance) + "] ";
-          if (ESP_Name) {
+          if (g_ESPConfig->ESP_Distance) displayText = "[" + int_to_string((int)distance) + "] ";
+          if (g_ESPConfig->ESP_Name) {
             std::string playerName = GetCachedPlayerName(enemy);
             if (!playerName.empty()) displayText += playerName;
           }

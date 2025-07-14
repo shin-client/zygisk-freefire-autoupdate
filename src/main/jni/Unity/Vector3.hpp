@@ -220,7 +220,7 @@ Vector3 Vector3::Normalize() {
   *this /= mag;
   return *this;
 }
-float NormalizeAngele(float a) {
+inline float NormalizeAngele(float a) {
   while (a > 360) a -= 360;
   while (a < 0) a += 360;
   return a;
@@ -371,6 +371,6 @@ bool operator==(const Vector3 lhs, const Vector3 rhs) { return lhs.x == rhs.x &&
 
 bool operator!=(const Vector3 lhs, const Vector3 rhs) { return !(lhs == rhs); }
 
-std::string to_string(Vector3 a) {
+inline std::string to_string(Vector3 a) {
   return std::to_string(a.x) + std::string(", ") + std::to_string(a.y) + std::string(", ") + std::to_string(a.z);
 }

@@ -2,64 +2,83 @@
 #define BOOLS_H
 
 #include <cmath>
+#include <memory>
 #include <string>
 
-#include "Vector3.hpp"
+#include "../Unity/Vector3.hpp"
 #include "imgui.h"
+
+#define DIR_COUNT 3
 
 extern int g_GlWidth, g_GlHeight;
 
-// Aimbot Configuration
-int   AimWhen = 1;
-float Fov_Aim = 100.0f;
-float Aimdis  = 200.0f;
-bool  Aimbot  = false;
+class ESP {
+ public:
+  bool ESP_Enable   = false;
+  bool ESP_Box      = false;
+  bool ESP_Line     = false;
+  bool ESP_Health   = false;
+  bool ESP_Name     = false;
+  bool ESP_Distance = false;
 
-// ESP Configuration
-bool ESP_Enable    = false;
-bool ESP_Box       = false;
-bool ESP_Line      = false;
-bool ESP_Health    = false;
-bool ESP_Name      = false;
-bool ESP_Distance  = false;
-bool ESP_FOVCircle = false;
+  void enableAll() {
+    ESP_Enable   = true;
+    ESP_Box      = true;
+    ESP_Line     = true;
+    ESP_Health   = true;
+    ESP_Name     = true;
+    ESP_Distance = true;
+  }
 
-// Anti-Report Feature
-bool AntiReport = false;
+  void disableAll() {
+    ESP_Enable   = false;
+    ESP_Box      = false;
+    ESP_Line     = false;
+    ESP_Health   = false;
+    ESP_Name     = false;
+    ESP_Distance = false;
+  }
+};
 
-// Visual Settings
-float visual_esp_box   = 1;
-float visual_esp_boxth = 1;
+class AimbotClass {
+ public:
+  int   AimWhen = 1;
+  float Fov_Aim = 100.0f;
+  float Aimdis  = 200.0f;
+  bool  Aimbot  = false;
+};
 
-// Colors
-ImColor die = ImColor(255, 0, 0);
-ImColor hp  = ImColor(0, 255, 0, 255);
+extern std::shared_ptr<ESP>         g_ESPConfig;
+extern std::shared_ptr<AimbotClass> g_AimbotConfig;
 
-// Aimbot modes
-const char *dir[] = {"None", "Aim", "Scope"};
+class OtherFeature {
+ public:
+  bool AntiReport = false;
+  bool ResetGuest = false;
 
-// Utility functions
-std::string int_to_string(int num) {
-  return std::to_string(num);
-}
+  void resetAll() {
+    g_ESPConfig->ESP_Enable   = false;
+    g_ESPConfig->ESP_Box      = false;
+    g_ESPConfig->ESP_Line     = false;
+    g_ESPConfig->ESP_Health   = false;
+    g_ESPConfig->ESP_Name     = false;
+    g_ESPConfig->ESP_Distance = false;
+    g_AimbotConfig->Aimbot    = false;
+    g_AimbotConfig->Fov_Aim   = 100.0f;
+    g_AimbotConfig->Aimdis    = 200.0f;
+    AntiReport                = false;
+  }
+};
 
-bool isFov(Vector3 vec1, Vector3 vec2, int radius) {
-  int x  = vec1.x;
-  int y  = vec1.y;
-  int x0 = vec2.x;
-  int y0 = vec2.y;
+extern std::shared_ptr<OtherFeature> g_OtherConfig;
 
-  return (pow(x - x0, 2) + pow(y - y0, 2)) <= pow(radius, 2);
-}
-
-bool isInsideFOV(int x, int y, float fov_size) {
-  if (fov_size <= 0) return true;
-
-  int circle_x = g_GlWidth / 2;
-  int circle_y = g_GlHeight / 2;
-  int rad      = fov_size;
-
-  return (x - circle_x) * (x - circle_x) + (y - circle_y) * (y - circle_y) <= rad * rad;
-}
+extern float       visual_esp_box;
+extern float       visual_esp_boxth;
+extern ImColor     die;
+extern ImColor     hp;
+extern const char *dir[DIR_COUNT];
+std::string        int_to_string(int num);
+bool               isFov(Vector3 vec1, Vector3 vec2, int radius);
+bool               isInsideFOV(int x, int y, float fov_size);
 
 #endif  // BOOLS_H

@@ -1,26 +1,10 @@
-#ifndef MAIN_H
-#define MAIN_H
+#pragma once
 
-#include <Struct/tools.hpp>
 #include <map>
 #include <string>
 
-struct cfg {
-  bool aimbot;
-  int  aim_type   = 0;
-  int  aim_target = 1;
-
-  struct _esp {
-    bool Box;
-    bool Line;
-    bool Health;
-    bool Distance;
-    bool IsName;
-    bool Path;
-    bool Esp360;
-    bool Target;
-  } ESP;
-} inline Config;
+#include "Bools.h"
+#include "tools.hpp"
 
 inline std::map<std::string, void *> _methods;
 inline std::map<std::string, size_t> _fields;
@@ -35,7 +19,4 @@ inline T setFieldValue(void *instance, ulong offset, T value) {
   *(T *)((uintptr_t)instance + offset) = value;
 }
 
-void  menu();
 void *getRealAddr(ulong offset);
-
-#endif  // MAIN_H

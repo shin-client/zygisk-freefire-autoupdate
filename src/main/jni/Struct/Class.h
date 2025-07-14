@@ -1,9 +1,9 @@
 #pragma once
 
+#include "Bools.h"
 #include "Dobby/dobby.h"
 #include "Unity/MonoString.h"
 #include "Unity/Quaternion.h"
-#include "Bools.h"
 #include "obfuscate.h"
 
 // ============================================================================
@@ -15,13 +15,17 @@ class Vvector3 {
   float X;
   float Y;
   float Z;
+
   Vvector3() : X(0), Y(0), Z(0) {}
+
   Vvector3(float x1, float y1, float z1) : X(x1), Y(y1), Z(z1) {}
+
   Vvector3(const Vvector3 &v);
   ~Vvector3();
 };
 
 Vvector3::Vvector3(const Vvector3 &v) : X(v.X), Y(v.Y), Z(v.Z) {}
+
 Vvector3::~Vvector3() {}
 
 // ============================================================================
@@ -91,7 +95,7 @@ Vvector3::~Vvector3() {}
                         OBFUSCATE("get_transform"), 0)
 
 // Time System
-#define Time                                                                                                  \
+#define TimeSys                                                                                                  \
   (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Time"), \
                                    OBFUSCATE("get_deltaTime"), 0)
 
@@ -139,7 +143,7 @@ Vvector3::~Vvector3() {}
                                    OBFUSCATE("get_MaxHP"), 0)
 
 // Player Info
-#define Name                                                                                                         \
+#define PlayerName                                                                                                         \
   (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), \
                                    OBFUSCATE("get_NickName"), 0)
 
@@ -180,8 +184,13 @@ Vvector3::~Vvector3() {}
   (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("mscorlib.dll"), OBFUSCATE("System"), OBFUSCATE("String"), \
                                    OBFUSCATE("get_Chars"), 1)
 
+// Reset Guest
+#define ResetGuest                                                                                              \
+  (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW"), OBFUSCATE("GameConfig"), \
+                                   OBFUSCATE("get_ResetGuest"), 0);
+
 // ============================================================================
-// ANTI-REPORT OFFSETS
+// BYPASS
 // ============================================================================
 
 #define Report1                                                                        \
@@ -198,12 +207,13 @@ Vvector3::~Vvector3() {}
                                    OBFUSCATE("InteractionPopUtil"), OBFUSCATE("CreateAddToBlackList"), 3)
 
 // ============================================================================
-// ANTI-REPORT HOOK FUNCTIONS
+// BYPASS HOOK FUNCTIONS
 // ============================================================================
 
 static void *(*orig_CreateReportPlayer)(void *util, void *player, int reason) = nullptr;
+
 static void *hook_CreateReportPlayer(void *util, void *player, int reason) {
-  if (AntiReport) {
+  if (g_OtherConfig->AntiReport) {
     // Block report - do nothing and return null
     return nullptr;
   }
@@ -212,8 +222,9 @@ static void *hook_CreateReportPlayer(void *util, void *player, int reason) {
 }
 
 static void *(*orig_SetReportData)(void *controller, void *data1, void *data2, void *data3, void *data4) = nullptr;
+
 static void *hook_SetReportData(void *controller, void *data1, void *data2, void *data3, void *data4) {
-  if (AntiReport) {
+  if (g_OtherConfig->AntiReport) {
     // Block report data setting
     return nullptr;
   }
@@ -221,9 +232,9 @@ static void *hook_SetReportData(void *controller, void *data1, void *data2, void
 }
 
 static void *(*orig_CreateAddToBlackList)(void *util, void *player, int reason) = nullptr;
+
 static void *hook_CreateAddToBlackList(void *util, void *player, int reason) {
-  if (AntiReport) {
-    // Block blacklist addition
+  if (g_OtherConfig->AntiReport) {
     return nullptr;
   }
   return orig_CreateAddToBlackList(util, player, reason);
@@ -319,6 +330,11 @@ static void *GetLocalPlayer(void *Game) {
   return _GetLocalPlayer(Game);
 }
 
+static bool Call_ResetGuest() {
+  bool (*func)() = (bool (*)())ResetGuest;
+  return func();
+}
+
 // Player Status Functions
 static bool get_isVisible(void *player) {
   bool (*_get_isVisible)(void *players) = (bool (*)(void *))(Visible);
@@ -395,7 +411,7 @@ static bool IsDriver(void *player) {
 
 // Player Info Functions
 static MonoString *get_NickName(void *player) {
-  MonoString *(*_get_NickName)(void *players) = (MonoString * (*)(void *))(Name);
+  MonoString *(*_get_NickName)(void *players) = (MonoString * (*)(void *))(PlayerName);
   return _get_NickName(player);
 }
 
