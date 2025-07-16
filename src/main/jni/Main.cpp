@@ -20,6 +20,7 @@
 
 #include "Struct/Class.h"
 #include "Struct/Gui.hpp"
+#include "Struct/main.h"
 #include "Struct/obfuscate.h"
 #include "imgui/Toggle.h"
 #include "imgui/fonts/FontAwesome6_solid.h"
@@ -29,220 +30,7 @@ using zygisk::Api;
 using zygisk::AppSpecializeArgs;
 using zygisk::ServerSpecializeArgs;
 
-// int g_GlWidth, g_GlHeight;
-std::vector<LogEntry> g_LogBuffer;
-bool                  g_AutoScroll     = true;
-bool                  g_LogsVisible    = false;
-bool                  g_AutoSaveToFile = true;
-std::string           g_LogFilePath    = "/sdcard/zygisk_ff_logs.txt";
-const int             MAX_LOG_ENTRIES  = 1000;
-
-std::string GetCurrentTimestamp() {
-  auto now    = std::chrono::system_clock::now();
-  auto time_t = std::chrono::system_clock::to_time_t(now);
-  auto ms     = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
-
-  std::stringstream ss;
-  ss << std::put_time(std::localtime(&time_t), "%Y-%m-%d %H:%M:%S");
-  ss << '.' << std::setfill('0') << std::setw(3) << ms.count();
-  return ss.str();
-}
-
-void InitLogFile() {
-  if (!g_AutoSaveToFile) return;
-
-  LOGD("Initializing log file: %s", g_LogFilePath.c_str());
-
-  std::ofstream logFile(g_LogFilePath, std::ios::out | std::ios::trunc);
-  if (!logFile.is_open()) {
-    // Try alternative paths
-    std::vector<std::string> altPaths = {"/storage/emulated/0/Download/zygisk_ff_logs.txt",
-                                         "/data/data/com.dts.freefiremax/zygisk_ff_logs.txt",
-                                         "/data/data/com.dts.freefireth/zygisk_ff_logs.txt"};
-
-    for (const auto &altPath : altPaths) {
-      LOGW("Trying alternative path: %s", altPath.c_str());
-      logFile.open(altPath, std::ios::out | std::ios::trunc);
-      if (logFile.is_open()) {
-        g_LogFilePath = altPath;
-        LOGI("Successfully switched to log path: %s", altPath.c_str());
-        break;
-      }
-    }
-
-    if (!logFile.is_open()) {
-      LOGE("Failed to initialize any log file path");
-      g_AutoSaveToFile = false;  // Disable auto-save if no path works
-      return;
-    }
-  }
-
-  try {
-    logFile << "=== ZYGISK FF LOG SESSION START ===" << std::endl;
-    logFile << "Session started at: " << GetCurrentTimestamp() << std::endl;
-    logFile << "=====================================" << std::endl;
-    logFile.flush();
-    logFile.close();
-    LOGI("Log file initialized successfully");
-  } catch (...) {
-    LOGE("Failed to write to log file during initialization");
-    logFile.close();
-    g_AutoSaveToFile = false;
-  }
-}
-
-void WriteLogToFile(const std::string &timestamp, const std::string &level, const std::string &message) {
-  if (!g_AutoSaveToFile) return;
-
-  std::ofstream logFile(g_LogFilePath, std::ios::out | std::ios::app);
-  if (!logFile.is_open()) {
-    // Try alternative path if main path fails
-    std::string altPath = "/data/data/com.dts.freefireth/zygisk_ff_logs.txt";
-    logFile.open(altPath, std::ios::out | std::ios::app);
-    if (!logFile.is_open()) {
-      return;  // Silently fail to avoid spam
-    }
-    g_LogFilePath = altPath;  // Update global path
-  }
-
-  try {
-    logFile << "[" << timestamp << "] [" << level << "] " << message << std::endl;
-    logFile.flush();  // Ensure immediate write
-    logFile.close();
-  } catch (...) {
-    // Silently handle write errors
-    logFile.close();
-  }
-}
-
-void SaveLogsToFile() {
-  LOGD("Attempting to save logs to file: %s", g_LogFilePath.c_str());
-
-  std::ofstream logFile(g_LogFilePath, std::ios::out | std::ios::trunc);
-  if (!logFile.is_open()) {
-    LOGE("Failed to open log file for writing: %s", g_LogFilePath.c_str());
-
-    // Try alternative path
-    std::string altPath = "/data/data/com.dts.freefiremax/zygisk_ff_logs.txt";
-    LOGW("Trying alternative path: %s", altPath.c_str());
-
-    logFile.open(altPath, std::ios::out | std::ios::trunc);
-    if (!logFile.is_open()) {
-      LOGE("Failed to open alternative log file path");
-      return;
-    }
-    g_LogFilePath = altPath;  // Update path if successful
-    LOGI("Successfully switched to alternative log path");
-  }
-
-  try {
-    logFile << "=== ZYGISK FF COMPLETE LOG DUMP ===" << std::endl;
-    logFile << "Generated at: " << GetCurrentTimestamp() << std::endl;
-    logFile << "Total entries: " << g_LogBuffer.size() << std::endl;
-    logFile << "====================================" << std::endl;
-
-    size_t written = 0;
-    for (const auto &entry : g_LogBuffer) {
-      logFile << "[" << entry.timestamp << "] [" << entry.level << "] " << entry.message << std::endl;
-      written++;
-
-      // Flush every 100 entries to ensure data is written
-      if (written % 100 == 0) {
-        logFile.flush();
-      }
-    }
-
-    logFile << "=== END OF LOG DUMP ===" << std::endl;
-    logFile.flush();
-    logFile.close();
-
-    LOGI("Successfully saved %zu log entries to file", written);
-  } catch (const std::exception &e) {
-    LOGE("Exception occurred while writing logs: %s", e.what());
-    logFile.close();
-  }
-}
-
-void AddLog(const char *level, const char *fmt, ...) {
-  char    buffer[1024];
-  va_list args;
-  va_start(args, fmt);
-  vsnprintf(buffer, sizeof(buffer), fmt, args);
-  va_end(args);
-
-  LogEntry entry;
-  entry.timestamp = GetCurrentTimestamp();
-  entry.level     = level;
-  entry.message   = buffer;
-
-  // Set color based on log level
-  if (strcmp(level, "ERROR") == 0) {
-    entry.color = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);  // Red
-  } else if (strcmp(level, "WARN") == 0) {
-    entry.color = ImVec4(1.0f, 1.0f, 0.4f, 1.0f);  // Yellow
-  } else if (strcmp(level, "INFO") == 0) {
-    entry.color = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);  // Green
-  } else {
-    entry.color = ImVec4(0.8f, 0.8f, 0.8f, 1.0f);  // Gray
-  }
-
-  g_LogBuffer.push_back(entry);
-
-  // Write to file immediately if auto-save is enabled
-  WriteLogToFile(entry.timestamp, entry.level, entry.message);
-
-  // Keep buffer size under limit
-  if (g_LogBuffer.size() > MAX_LOG_ENTRIES) {
-    g_LogBuffer.erase(g_LogBuffer.begin());
-  }
-}
-
-void RenderLogsWindow() {
-  if (!g_LogsVisible) return;
-
-  ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
-  if (ImGui::Begin("Debug Logs", &g_LogsVisible)) {
-    // Controls
-    if (ImGui::Button("Clear")) {
-      g_LogBuffer.clear();
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Save to File")) {
-      SaveLogsToFile();
-    }
-    ImGui::SameLine();
-    ImGui::Checkbox("Auto-scroll", &g_AutoScroll);
-    ImGui::SameLine();
-    ImGui::Checkbox("Auto-save", &g_AutoSaveToFile);
-    ImGui::SameLine();
-    ImGui::Text("(%d entries)", (int)g_LogBuffer.size());
-
-    ImGui::Separator();
-
-    // File path display
-    ImGui::Text("Log file: %s", g_LogFilePath.c_str());
-    if (ImGui::Button("Open Log Directory")) {
-      // This will show path info
-      LOGI("Log file location: %s", g_LogFilePath.c_str());
-    }
-    ImGui::Separator();
-
-    // Log content
-    if (ImGui::BeginChild("LogContent", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar)) {
-      for (const auto &entry : g_LogBuffer) {
-        ImGui::TextColored(entry.color, "[%s] [%s] %s", entry.timestamp.c_str(), entry.level.c_str(),
-                           entry.message.c_str());
-      }
-
-      // Auto-scroll to bottom
-      if (g_AutoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
-        ImGui::SetScrollHereY(1.0f);
-      }
-    }
-    ImGui::EndChild();
-  }
-  ImGui::End();
-}
+ElfScanner            g_il2cppELF;
 
 void hack();
 
@@ -394,6 +182,7 @@ inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface) {
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplAndroid_NewFrame(g_GlWidth, g_GlHeight);
   ImGui::NewFrame();
+
   int touchCount = (((int (*)())(Class_Input__get_touchCount))());
   if (touchCount > 0) {
     UnityEngine_Touch_Fields touch    = ((UnityEngine_Touch_Fields (*)(int))(Class_Input__GetTouch))(0);
@@ -418,17 +207,20 @@ inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface) {
 
   DrawESP(g_GlWidth, g_GlHeight);
   RenderLogsWindow();
-  ImGui::SetNextWindowSize(ImVec2((float)g_GlWidth * 0.35f, (float)g_GlHeight * 0.60f), ImGuiCond_Once);
-  if (ImGui::Begin(OBFUSCATE("Zygisk by Ngoc [ x32/x64 ]"), 0, ImGuiWindowFlags_NoBringToFrontOnFocus)) {
-    static int currentMenu = 0;
+  ImGui::SetNextWindowSize(ImVec2((float)g_GlWidth * 0.35f, (float)g_GlHeight * 0.50f), ImGuiCond_Once);
+  char buf[128];
+  sprintf(buf, OBFUSCATE("Zygisk by Ngoc %0.1f FPS [ x32/x64 ]"), (io.Framerate));
+  if (ImGui::Begin(buf, 0, ImGuiWindowFlags_NoBringToFrontOnFocus)) {
+    static int   currentMenu = 0;
+    static float item_height = 50.0f;
 
     // Sidebar
     ImGui::BeginChild("Sidebar", ImVec2(150, 0), true);
     {
-      if (ImGui::Selectable(OBFUSCATE("ESP"), currentMenu == 0)) currentMenu = 0;
-      if (ImGui::Selectable(OBFUSCATE("Aimbot"), currentMenu == 1)) currentMenu = 1;
-      if (ImGui::Selectable(OBFUSCATE("Settings"), currentMenu == 2)) currentMenu = 2;
-      if (ImGui::Selectable(OBFUSCATE("Info"), currentMenu == 3)) currentMenu = 3;
+      if (ImGui::Selectable(OBFUSCATE("ESP"), currentMenu == 0, 0, ImVec2(0, item_height))) currentMenu = 0;
+      if (ImGui::Selectable(OBFUSCATE("Aimbot"), currentMenu == 1, 0, ImVec2(0, item_height))) currentMenu = 1;
+      if (ImGui::Selectable(OBFUSCATE("Settings"), currentMenu == 2, 0, ImVec2(0, item_height))) currentMenu = 2;
+      if (ImGui::Selectable(OBFUSCATE("Info"), currentMenu == 3, 0, ImVec2(0, item_height))) currentMenu = 3;
     }
     ImGui::EndChild();
 
@@ -496,8 +288,8 @@ inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface) {
             }
           }
 
-          if (ImGui::Button(OBFUSCATE("Reset Guest"))) {
-            Call_ResetGuest();
+          if (ImGui::Checkbox(OBFUSCATE("Reset Guest"), &g_OtherConfig->ResetGuest)) {
+            Patch_ResetGuest(g_OtherConfig->ResetGuest);
           }
 
           ImGui::Spacing();
@@ -567,30 +359,28 @@ void hack_thread(pid_t pid) {
   LOGD("=== ZYGISK FF HACK THREAD START ===");
   LOGD("Thread PID: %i", pid);
 
-  for (int i = 0; i < 10; i++) {
-    LOGD("Searching for libil2cpp.so... attempt %d/10", i + 1);
-    il2cpp_base = get_module_base(pid, "libil2cpp.so");
-    if (il2cpp_base != 0) {
-      LOGI("libil2cpp.so found!");
-      break;
-    }
-    LOGD("libil2cpp.so not found, waiting 10 seconds...");
-    sleep(10);
-  }
+  do {
+    sleep(1);
+    LOGD("Searching for libil2cpp.so...");
+    g_il2cppELF = ElfScanner::createWithPath("libil2cpp.so");
+  } while (!g_il2cppELF.isValid());
 
-  if (il2cpp_base == 0) {
-    LOGE("CRITICAL: libil2cpp.so not found after 10 attempts!");
+  uintptr_t il2cppBase = g_il2cppELF.base();
+
+  if (il2cppBase == 0) {
+    LOGE("CRITICAL: libil2cpp.so not found!");
     LOGE("Thread %d terminating", pid);
     std::terminate();
   }
 
-  LOGI("IL2CPP base address: 0x%" PRIxPTR, il2cpp_base);
+  LOGI("il2cppBase: 0x%" PRIxPTR, il2cppBase);
   LOGD("Waiting 10 seconds before attachment...");
   sleep(10);
 
   LOGD("Starting IL2CPP attachment...");
   Il2CppAttach();
   LOGI("IL2CPP attached successfully");
+
   // If you have Your own bypass then past here 🙂
   // =======
 
@@ -602,7 +392,6 @@ void hack_thread(pid_t pid) {
 }
 
 void hack() {
-  // Initialize log file at start
   InitLogFile();
 
   LOGI("*** ZYGISK FF INJECTION SUCCESSFUL ***");

@@ -35,4 +35,5 @@ android {
 //dependencies must be placed below 'android' brackets to get it work on AIDE
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'io.github.hexhacking:xdl:2.3.0'
 }

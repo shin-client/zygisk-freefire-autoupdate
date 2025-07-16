@@ -327,6 +327,11 @@ inline void DrawESP(float screenWidth, float screenHeight) {
       // Get all enemies for ESP (no FOV restriction)
       std::vector<void *> enemies = GetAllEnemies();
 
+      int enemiesQuantity = enemies.size();
+
+      ImGui::GetBackgroundDrawList()->AddText(ImVec2(20, 20), ImColor(255, 0, 0),
+                                              (std::to_string(enemiesQuantity)).c_str());
+
       // ESP_FOVCircle
       if (g_AimbotConfig->Aimbot) {
         draw->AddCircle(ImVec2(screenWidth / 2, screenHeight / 2), g_AimbotConfig->Fov_Aim, ImColor(255, 255, 255), 0,

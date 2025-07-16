@@ -44,7 +44,7 @@ namespace KittyArm64
 			{
 				// Retrieve msb of 21-bit-signed imm for sign extension.
 				uint64_t msbt = (imm_val >> 20) & 1;
-				
+
 				// Real value is imm multiplied by 4k. Value now has 33-bit information.
 				imm_val <<= 12;
 
@@ -124,4 +124,12 @@ namespace KittyArm64
 		return false;
 	}
 
+}
+
+namespace KittyArm
+{
+	int32_t decode_ldr_literal(uint32_t insn)
+	{
+		return KittyArm64::bits_from(insn, 0, 12);
+	}
 }

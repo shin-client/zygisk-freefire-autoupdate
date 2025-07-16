@@ -1,10 +1,14 @@
 #pragma once
 
+#include "../KittyMemory/KittyInclude.h"
 #include "Bools.h"
 #include "Dobby/dobby.h"
+#include "Logger.h"
 #include "Unity/MonoString.h"
 #include "Unity/Quaternion.h"
 #include "obfuscate.h"
+
+extern ElfScanner g_il2cppELF;
 
 // ============================================================================
 // UTILITY CLASSES
@@ -95,7 +99,7 @@ Vvector3::~Vvector3() {}
                         OBFUSCATE("get_transform"), 0)
 
 // Time System
-#define TimeSys                                                                                                  \
+#define TimeSys                                                                                               \
   (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("UnityEngine.dll"), OBFUSCATE("UnityEngine"), OBFUSCATE("Time"), \
                                    OBFUSCATE("get_deltaTime"), 0)
 
@@ -143,7 +147,7 @@ Vvector3::~Vvector3() {}
                                    OBFUSCATE("get_MaxHP"), 0)
 
 // Player Info
-#define PlayerName                                                                                                         \
+#define PlayerName                                                                                                   \
   (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW.GamePlay"), OBFUSCATE("Player"), \
                                    OBFUSCATE("get_NickName"), 0)
 
@@ -185,9 +189,9 @@ Vvector3::~Vvector3() {}
                                    OBFUSCATE("get_Chars"), 1)
 
 // Reset Guest
-#define ResetGuest                                                                                              \
+#define ResetGuest_Offset                                                                                       \
   (uintptr_t)Il2CppGetMethodOffset(OBFUSCATE("Assembly-CSharp.dll"), OBFUSCATE("COW"), OBFUSCATE("GameConfig"), \
-                                   OBFUSCATE("get_ResetGuest"), 0);
+                                   OBFUSCATE("get_ResetGuest"), 0)
 
 // ============================================================================
 // BYPASS
@@ -330,9 +334,23 @@ static void *GetLocalPlayer(void *Game) {
   return _GetLocalPlayer(Game);
 }
 
-static bool Call_ResetGuest() {
-  bool (*func)() = (bool (*)())ResetGuest;
-  return func();
+static void Patch_ResetGuest(bool enable) {
+  uintptr_t il2cppBase = g_il2cppELF.base();
+
+  LOGD("ResetGuest_Offset: %d", ResetGuest_Offset);
+
+  MemoryPatch patch =
+      MemoryPatch::createWithBytes(il2cppBase + ResetGuest_Offset, "\x01\x00\xA0\xE3\x1E\xFF\x2F\xE1", 8);
+
+  if (enable) {
+    if (!patch.Modify()) {
+      LOGE("Patch ResetGuest failed!");
+    }
+  } else {
+    if (!patch.Restore()) {
+      LOGE("Restore ResetGuest failed!");
+    }
+  }
 }
 
 // Player Status Functions
