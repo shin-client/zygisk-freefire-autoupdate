@@ -1,10 +1,8 @@
 #include "Struct/main.h"
 
-#include <CydiaSubstrate.h>
 #include <Il2Cpp.h>
 #include <KittyMemory.h>
 #include <KittyUtils.h>
-#include <SubstrateHook.h>
 #include <android/log.h>
 #include <unistd.h>
 #include <xdl.h>
@@ -30,7 +28,7 @@ using zygisk::Api;
 using zygisk::AppSpecializeArgs;
 using zygisk::ServerSpecializeArgs;
 
-ElfScanner            g_il2cppELF;
+ElfScanner g_il2cppELF;
 
 void hack();
 
@@ -158,10 +156,6 @@ void SetDarkGrayTheme() {
 
 // ========================= \\
 
-uintptr_t il2cpp_base = 0;
-
-void *getRealAddr(ulong offset) { return reinterpret_cast<void *>(il2cpp_base + offset); };
-
 inline EGLBoolean (*old_eglSwapBuffers)(EGLDisplay dpy, EGLSurface surface);
 
 inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface) {
@@ -208,9 +202,7 @@ inline EGLBoolean hook_eglSwapBuffers(EGLDisplay dpy, EGLSurface surface) {
   DrawESP(g_GlWidth, g_GlHeight);
   RenderLogsWindow();
   ImGui::SetNextWindowSize(ImVec2((float)g_GlWidth * 0.35f, (float)g_GlHeight * 0.50f), ImGuiCond_Once);
-  char buf[128];
-  sprintf(buf, OBFUSCATE("Zygisk by Ngoc %0.1f FPS [ x32/x64 ]"), (io.Framerate));
-  if (ImGui::Begin(buf, 0, ImGuiWindowFlags_NoBringToFrontOnFocus)) {
+  if (ImGui::Begin(OBFUSCATE("Zygisk by Ngoc [ x32/x64 ]"), 0, ImGuiWindowFlags_NoBringToFrontOnFocus)) {
     static int   currentMenu = 0;
     static float item_height = 50.0f;
 

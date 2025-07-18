@@ -49,12 +49,7 @@ else ifeq ($(TARGET_ARCH_ABI), armeabi-v7a)
     LOCAL_SRC_FILES += $(HOOK_SRC:$(LOCAL_PATH)/%=%)
 endif
 
-
-
-
 LOCAL_STATIC_LIBRARIES := libdobby
 LOCAL_CPP_FEATURES     := exceptions
 
 include $(BUILD_SHARED_LIBRARY)
-# ============================================================================
-
