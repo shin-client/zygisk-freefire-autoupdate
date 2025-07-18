@@ -5,7 +5,7 @@
 #include <KittyUtils.h>
 #include <android/log.h>
 #include <unistd.h>
-#include <xdl.h>
+#include <xdl/xdl.h>
 
 #include <chrono>
 #include <fstream>
